@@ -1,56 +1,101 @@
 <!doctype html>
 <html lang="id" class="h-full">
- <head>
+
+<head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Teacher Workbook Alkaromah School</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <script src="/_sdk/data_sdk.js"></script>
   <script src="/_sdk/element_sdk.js"></script>
-  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&amp;display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&amp;display=swap"
+    rel="stylesheet">
   <style>
     body {
       box-sizing: border-box;
       font-family: 'Poppins', sans-serif;
     }
+
     .sidebar-item:hover {
       background: linear-gradient(90deg, rgba(59, 130, 246, 0.1) 0%, transparent 100%);
     }
+
     .sidebar-item.active {
       background: linear-gradient(90deg, rgba(59, 130, 246, 0.2) 0%, transparent 100%);
       border-left: 4px solid #3b82f6;
     }
+
     .card-hover:hover {
       transform: translateY(-2px);
-      box-shadow: 0 10px 40px rgba(0,0,0,0.1);
+      box-shadow: 0 10px 40px rgba(0, 0, 0, 0.1);
     }
+
     .gradient-bg {
       background: linear-gradient(135deg, #1e3a5f 0%, #2d5a87 100%);
     }
+
     .stat-card {
       background: linear-gradient(135deg, #ffffff 0%, #f8fafc 100%);
     }
+
     @media print {
-      .no-print { display: none !important; }
-      .print-only { display: block !important; }
+      .no-print {
+        display: none !important;
+      }
+
+      .print-only {
+        display: block !important;
+      }
     }
+
     .toast {
       animation: slideIn 0.3s ease-out;
     }
+
     @keyframes slideIn {
-      from { transform: translateX(100%); opacity: 0; }
-      to { transform: translateX(0); opacity: 1; }
+      from {
+        transform: translateX(100%);
+        opacity: 0;
+      }
+
+      to {
+        transform: translateX(0);
+        opacity: 1;
+      }
     }
+
     .modal-overlay {
-      background: rgba(0,0,0,0.5);
+      background: rgba(0, 0, 0, 0.5);
       backdrop-filter: blur(4px);
     }
   </style>
-  <style>@view-transition { navigation: auto; }</style>
- </head>
- <body class="h-full bg-gray-50">
+  <style>
+    @view-transition {
+      navigation: auto;
+    }
+  </style>
+</head>
+
+<body class="h-full bg-gray-50">
   <div id="app" class="h-full overflow-auto"></div>
-  <script>
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
+    import { getAnalytics } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-analytics.js";
+    import { getFirestore, doc, setDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+
+    const firebaseConfig = {
+      apiKey: "AIzaSyDFBj2hhmlVQozRP4yjfLKGPUTMxXX1nAE",
+      authDomain: "alkaromahislamicschool.firebaseapp.com",
+      projectId: "alkaromahislamicschool",
+      storageBucket: "alkaromahislamicschool.firebasestorage.app",
+      messagingSenderId: "277565452029",
+      appId: "1:277565452029:web:1d1c00b204f829e6d8d894",
+      measurementId: "G-WLP4EDYGGD"
+    };
+
+    const app = initializeApp(firebaseConfig);
+    const analytics = getAnalytics(app);
+    const db = getFirestore(app);
     // ===================== APP STATE =====================
     let currentUser = null;
     let currentPage = 'dashboard';
@@ -59,14 +104,14 @@
         logo: '',
         semester: 'Ganjil',
         tahunAjaran: '2024/2025',
-        namaLembaga: 'Yayasan Pondok Pesantren Al-Hidayah Bani Sya\'roni',
-        namaSekolah: 'SDIT Al-Karomah',
-        alamat: 'Kp. Manapa Rt.001/004',
-        kelurahan: 'Karangtanjung',
-        kecamatan: 'Cililin',
-        kabupaten: 'Bandung Barat',
+        namaLembaga: 'Yayasan Alkaromah',
+        namaSekolah: 'SD Alkaromah',
+        alamat: 'Jl. Pendidikan No. 1',
+        kelurahan: 'Sukamaju',
+        kecamatan: 'Cikarang',
+        kabupaten: 'Bekasi',
         provinsi: 'Jawa Barat',
-        kodePos: '40562',
+        kodePos: '17530',
         email: 'info@sdalkaromah.sch.id',
         telepon: '021-12345678',
         kepalaSekolah: 'H. Ahmad Fauzi, S.Pd., M.Pd.',
@@ -100,100 +145,42 @@
       secondary_color: '#3b82f6',
       bg_color: '#f8fafc',
       text_color: '#1e293b',
-      accent_color: '#10b981',
-      font_family: 'Poppins',
-      font_size: 14
+      accent_color: '#10b981'
     };
 
     let config = { ...defaultConfig };
 
-    // ===================== DATA SDK HANDLER =====================
-    let allRecords = [];
-    
-    const dataHandler = {
-      onDataChanged(data) {
-        if (data && data.length > 0) {
-          allRecords = data;
-          
-          if (currentUser) {
-            // Load data specific to this teacher
-            const teacherRecord = data.find(record => 
-              record.type === 'teacherData' && 
-              record.teacher === currentUser.username
-            );
-            
-            if (teacherRecord && teacherRecord.data) {
-              try {
-                const parsed = JSON.parse(teacherRecord.data);
-                // Merge teacher-specific data
-                appData.students = parsed.students || [];
-                appData.subjects = parsed.subjects || [];
-                appData.journals = parsed.journals || [];
-                appData.attendance = parsed.attendance || [];
-                appData.grades = parsed.grades || [];
-              } catch (e) {}
+    // ===================== FIREBASE HANDLER =====================
+    async function saveAppData() {
+      try {
+        await setDoc(doc(db, "app_data", "main"), {
+          data: JSON.stringify(appData),
+          updatedAt: new Date().toISOString()
+        });
+      } catch (e) {
+        console.error("Error saving data:", e);
+        showToast('Gagal menyimpan data ke server', 'error');
+      }
+    }
+
+    function initDataListener() {
+      onSnapshot(doc(db, "app_data", "main"), (docSnap) => {
+        if (docSnap.exists()) {
+          try {
+            const remoteData = JSON.parse(docSnap.data().data);
+            appData = { ...appData, ...remoteData };
+            if (currentUser) {
+              renderApp();
             }
-            
-            // Load shared school profile (if exists)
-            const profileRecord = data.find(record => record.type === 'schoolProfile');
-            if (profileRecord && profileRecord.data) {
-              try {
-                const parsed = JSON.parse(profileRecord.data);
-                appData.schoolProfile = { ...appData.schoolProfile, ...parsed };
-              } catch (e) {}
-            }
-            
-            renderApp();
+          } catch (e) {
+            console.error("Error parsing remote data", e);
           }
         }
-      }
-    };
+      });
+    }
 
-    async function saveAppData() {
-      if (!currentUser) return;
-      
-      // Save teacher-specific data
-      const teacherDataRecord = allRecords.find(r => 
-        r.type === 'teacherData' && 
-        r.teacher === currentUser.username
-      );
-      
-      const teacherDataToSave = {
-        type: 'teacherData',
-        teacher: currentUser.username,
-        data: JSON.stringify({
-          students: appData.students,
-          subjects: appData.subjects,
-          journals: appData.journals,
-          attendance: appData.attendance,
-          grades: appData.grades
-        }),
-        updatedAt: new Date().toISOString()
-      };
-      
-      if (teacherDataRecord) {
-        teacherDataToSave.__backendId = teacherDataRecord.__backendId;
-        await window.dataSdk.update(teacherDataToSave);
-      } else {
-        teacherDataToSave.createdAt = new Date().toISOString();
-        await window.dataSdk.create(teacherDataToSave);
-      }
-      
-      // Save shared school profile
-      const profileRecord = allRecords.find(r => r.type === 'schoolProfile');
-      const profileDataToSave = {
-        type: 'schoolProfile',
-        data: JSON.stringify(appData.schoolProfile),
-        updatedAt: new Date().toISOString()
-      };
-      
-      if (profileRecord) {
-        profileDataToSave.__backendId = profileRecord.__backendId;
-        await window.dataSdk.update(profileDataToSave);
-      } else {
-        profileDataToSave.createdAt = new Date().toISOString();
-        await window.dataSdk.create(profileDataToSave);
-      }
+    async function findExistingRecord(type) {
+      return null;
     }
 
     // ===================== ELEMENT SDK =====================
@@ -203,16 +190,6 @@
           defaultConfig,
           onConfigChange: async (newConfig) => {
             config = { ...config, ...newConfig };
-            
-            // Apply font family
-            const customFont = config.font_family || defaultConfig.font_family;
-            const baseFontStack = 'Arial, sans-serif';
-            document.body.style.fontFamily = `${customFont}, ${baseFontStack}`;
-            
-            // Apply font size scaling
-            const baseSize = config.font_size || defaultConfig.font_size;
-            document.documentElement.style.fontSize = `${baseSize}px`;
-            
             renderApp();
           },
           mapToCapabilities: (cfg) => ({
@@ -224,21 +201,11 @@
               { get: () => cfg.accent_color || defaultConfig.accent_color, set: (v) => { cfg.accent_color = v; window.elementSdk.setConfig({ accent_color: v }); } }
             ],
             borderables: [],
-            fontEditable: {
-              get: () => cfg.font_family || defaultConfig.font_family,
-              set: (v) => { cfg.font_family = v; window.elementSdk.setConfig({ font_family: v }); }
-            },
-            fontSizeable: {
-              get: () => cfg.font_size || defaultConfig.font_size,
-              set: (v) => { cfg.font_size = v; window.elementSdk.setConfig({ font_size: v }); }
-            }
+            fontEditable: undefined,
+            fontSizeable: undefined
           }),
           mapToEditPanelValues: (cfg) => new Map([
-            ['app_title', cfg.app_title || defaultConfig.app_title],
-            ['school_name', appData.schoolProfile.namaSekolah],
-            ['school_foundation', appData.schoolProfile.namaLembaga],
-            ['school_phone', appData.schoolProfile.telepon],
-            ['school_email', appData.schoolProfile.email]
+            ['app_title', cfg.app_title || defaultConfig.app_title]
           ])
         });
         config = { ...defaultConfig, ...window.elementSdk.config };
@@ -283,9 +250,9 @@
         </div>
       `;
       document.body.appendChild(modal);
-      modal.querySelector('.cancel-btn').onclick = () => { modal.remove(); if(onCancel) onCancel(); };
-      modal.querySelector('.confirm-btn').onclick = () => { modal.remove(); if(onConfirm) onConfirm(); };
-      modal.onclick = (e) => { if(e.target === modal) modal.remove(); };
+      modal.querySelector('.cancel-btn').onclick = () => { modal.remove(); if (onCancel) onCancel(); };
+      modal.querySelector('.confirm-btn').onclick = () => { modal.remove(); if (onConfirm) onConfirm(); };
+      modal.onclick = (e) => { if (e.target === modal) modal.remove(); };
     }
 
     // ===================== LOGIN PAGE =====================
@@ -326,7 +293,7 @@
       const username = document.getElementById('login-username').value;
       const password = document.getElementById('login-password').value;
       const errorEl = document.getElementById('login-error');
-      
+
       const teacher = appData.teachers.find(t => t.username === username && t.password === password);
       if (teacher) {
         currentUser = teacher;
@@ -354,8 +321,8 @@
             <div class="p-4">
               <div class="flex items-center gap-3 mb-6">
                 <div class="w-12 h-12 rounded-full bg-white/20 flex items-center justify-center">
-                  ${appData.schoolProfile.logo ? `<img src="${appData.schoolProfile.logo}" class="w-10 h-10 rounded-full object-cover" loading="lazy" onerror="this.src=''; this.parentElement.innerHTML='<svg class=\\'w-6 h-6 text-white\\' fill=\\'none\\' stroke=\\'currentColor\\' viewBox=\\'0 0 24 24\\'><path stroke-linecap=\\'round\\' stroke-linejoin=\\'round\\' stroke-width=\\'2\\' d=\\'M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4\\'/></svg>';">` : 
-                  `<svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"/></svg>`}
+                  ${appData.schoolProfile.logo ? `<img src="${appData.schoolProfile.logo}" class="w-10 h-10 rounded-full object-cover" loading="lazy" onerror="this.src=''; this.parentElement.innerHTML='<svg class=\\'w-6 h-6 text-white\\' fill=\\'none\\' stroke=\\'currentColor\\' viewBox=\\'0 0 24 24\\'><path stroke-linecap=\\'round\\' stroke-linejoin=\\'round\\' stroke-width=\\'2\\' d=\\'M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4\\'/></svg>';">` :
+          `<svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"/></svg>`}
                 </div>
                 <div class="text-white">
                   <h2 class="font-bold text-sm leading-tight">${appData.schoolProfile.namaSekolah}</h2>
@@ -365,8 +332,8 @@
               <div class="bg-white/10 rounded-lg p-3 mb-6">
                 <div class="flex items-center gap-3">
                   <div class="w-10 h-10 rounded-full bg-white/20 flex items-center justify-center overflow-hidden">
-                    ${currentUser.foto ? `<img src="${currentUser.foto}" class="w-full h-full object-cover" loading="lazy" onerror="this.src=''; this.parentElement.innerHTML='<span class=\\'text-white font-bold\\'>${currentUser.username.charAt(0)}</span>';">` : 
-                    `<span class="text-white font-bold">${currentUser.username.charAt(0)}</span>`}
+                    ${currentUser.foto ? `<img src="${currentUser.foto}" class="w-full h-full object-cover" loading="lazy" onerror="this.src=''; this.parentElement.innerHTML='<span class=\\'text-white font-bold\\'>${currentUser.username.charAt(0)}</span>';">` :
+          `<span class="text-white font-bold">${currentUser.username.charAt(0)}</span>`}
                   </div>
                   <div class="text-white flex-1">
                     <p class="font-medium text-sm">${currentUser.username}</p>
@@ -404,7 +371,7 @@
     function renderSidebarItem(page, label, iconPath) {
       const isActive = currentPage === page;
       return `
-        <button onclick="navigateTo('${page}')" class="sidebar-item w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-white/80 hover:text-white transition ${isActive ? 'active' : ''}">
+        <button onclick="navigateTo('${page}')" data-page="${page}" class="sidebar-item w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-white/80 hover:text-white transition ${isActive ? 'active' : ''}">
           <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">${iconPath}</svg>
           <span class="text-sm">${label}</span>
         </button>
@@ -413,6 +380,18 @@
 
     function navigateTo(page) {
       currentPage = page;
+
+      // Update sidebar active state
+      document.querySelectorAll('.sidebar-item').forEach(item => {
+        if (item.dataset.page === page) {
+          item.classList.add('active');
+          item.classList.replace('text-white/80', 'text-white');
+        } else {
+          item.classList.remove('active');
+          item.classList.replace('text-white', 'text-white/80');
+        }
+      });
+
       document.getElementById('main-content').innerHTML = renderCurrentPage();
     }
 
@@ -426,7 +405,7 @@
     }
 
     function renderCurrentPage() {
-      switch(currentPage) {
+      switch (currentPage) {
         case 'dashboard': return renderDashboard();
         case 'profile': return renderProfile();
         case 'students': return renderStudents();
@@ -442,8 +421,8 @@
       const myStudents = appData.students.filter(s => s.kelas === currentUser.kelas);
       const mySubjects = appData.subjects.filter(s => s.kelas === currentUser.kelas);
       const recentJournals = appData.journals.filter(j => j.teacher === currentUser.username).slice(-5).reverse();
-      
-      const totalAttendance = myStudents.length > 0 ? 
+
+      const totalAttendance = myStudents.length > 0 ?
         Math.round(myStudents.reduce((acc, s) => acc + (s.attendanceRate || 85), 0) / myStudents.length) : 0;
 
       return `
@@ -512,7 +491,7 @@
               <h3 class="font-semibold mb-4" style="color: ${config.text_color}">Statistik Akademik</h3>
               <div class="grid grid-cols-3 gap-4">
                 <div class="text-center p-4 rounded-lg" style="background: ${config.secondary_color}10">
-                  <p class="text-3xl font-bold" style="color: ${config.secondary_color}">${myStudents.length > 0 ? Math.round(myStudents.reduce((a,s) => a + (s.avgGrade || 75), 0) / myStudents.length) : 0}</p>
+                  <p class="text-3xl font-bold" style="color: ${config.secondary_color}">${myStudents.length > 0 ? Math.round(myStudents.reduce((a, s) => a + (s.avgGrade || 75), 0) / myStudents.length) : 0}</p>
                   <p class="text-sm text-gray-500 mt-1">Rata-rata Nilai</p>
                 </div>
                 <div class="text-center p-4 rounded-lg" style="background: ${config.accent_color}10">
@@ -579,14 +558,14 @@
               <h3 class="font-semibold mb-4" style="color: ${config.text_color}">Identitas Sekolah</h3>
               <div class="space-y-4">
                 <div class="flex items-center gap-4">
-                  <div class="w-20 h-20 rounded-full border-2 border-dashed border-gray-300 flex items-center justify-center overflow-hidden bg-gray-50" id="logo-preview">
-                    ${appData.schoolProfile.logo ? 
-                      `<img src="${appData.schoolProfile.logo}" class="w-full h-full object-cover" loading="lazy" onerror="this.src=''; this.parentElement.innerHTML='<svg class=\\'w-8 h-8 text-gray-400\\' fill=\\'none\\' stroke=\\'currentColor\\' viewBox=\\'0 0 24 24\\'><path stroke-linecap=\\'round\\' stroke-linejoin=\\'round\\' stroke-width=\\'2\\' d=\\'M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z\\'/></svg>';">` : 
-                      `<svg class="w-8 h-8 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>`}
+                  <div class="w-20 h-20 rounded-full border-2 border-dashed border-gray-300 flex items-center justify-center overflow-hidden bg-gray-50">
+                    ${appData.schoolProfile.logo ?
+          `<img src="${appData.schoolProfile.logo}" class="w-full h-full object-cover" loading="lazy" onerror="this.src=''; this.parentElement.innerHTML='<svg class=\\'w-8 h-8 text-gray-400\\' fill=\\'none\\' stroke=\\'currentColor\\' viewBox=\\'0 0 24 24\\'><path stroke-linecap=\\'round\\' stroke-linejoin=\\'round\\' stroke-width=\\'2\\' d=\\'M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z\\'/></svg>';">` :
+          `<svg class="w-8 h-8 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>`}
                   </div>
                   <div>
                     <label class="block text-sm text-gray-600 mb-1">Logo Sekolah</label>
-                    <input type="file" accept="image/*" id="logo-upload-input" onchange="handleLogoUpload(event)" class="text-sm">
+                    <input type="file" accept="image/*" onchange="handleLogoUpload(event)" class="text-sm">
                   </div>
                 </div>
                 <div class="grid grid-cols-2 gap-4">
@@ -599,7 +578,11 @@
                   </div>
                   <div>
                     <label class="block text-sm text-gray-600 mb-1">Tahun Ajaran</label>
-                    <input type="text" id="profile-tahun" value="${appData.schoolProfile.tahunAjaran}" class="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:border-blue-400" placeholder="contoh: 2024/2025" onchange="updateSchoolProfile('tahunAjaran', this.value)">
+                    <select id="profile-tahun" class="w-full px-3 py-2 border rounded-lg" onchange="updateSchoolProfile('tahunAjaran', this.value)">
+                      <option value="2023/2024" ${appData.schoolProfile.tahunAjaran === '2023/2024' ? 'selected' : ''}>2023/2024</option>
+                      <option value="2024/2025" ${appData.schoolProfile.tahunAjaran === '2024/2025' ? 'selected' : ''}>2024/2025</option>
+                      <option value="2025/2026" ${appData.schoolProfile.tahunAjaran === '2025/2026' ? 'selected' : ''}>2025/2026</option>
+                    </select>
                   </div>
                 </div>
                 <div>
@@ -675,9 +658,9 @@
                 <h3 class="font-semibold mb-4" style="color: ${config.text_color}">Profil Wali Kelas</h3>
                 <div class="flex items-center gap-4 mb-4">
                   <div class="w-20 h-20 rounded-full border-2 border-dashed border-gray-300 flex items-center justify-center overflow-hidden bg-gray-50">
-                    ${currentUser.foto ? 
-                      `<img src="${currentUser.foto}" class="w-full h-full object-cover" loading="lazy" onerror="this.src=''; this.parentElement.innerHTML='<span class=\\'text-2xl font-bold text-gray-400\\'>${currentUser.username.charAt(0)}</span>';">` : 
-                      `<span class="text-2xl font-bold text-gray-400">${currentUser.username.charAt(0)}</span>`}
+                    ${currentUser.foto ?
+          `<img src="${currentUser.foto}" class="w-full h-full object-cover" loading="lazy" onerror="this.src=''; this.parentElement.innerHTML='<span class=\\'text-2xl font-bold text-gray-400\\'>${currentUser.username.charAt(0)}</span>';">` :
+          `<span class="text-2xl font-bold text-gray-400">${currentUser.username.charAt(0)}</span>`}
                   </div>
                   <div>
                     <label class="block text-sm text-gray-600 mb-1">Foto Profil</label>
@@ -705,13 +688,13 @@
       `;
     }
 
-    async function handleLogoUpload(event) {
+    function handleLogoUpload(event) {
       const file = event.target.files[0];
       if (file) {
         const reader = new FileReader();
-        reader.onload = async function(e) {
+        reader.onload = function (e) {
           appData.schoolProfile.logo = e.target.result;
-          await saveAppData();
+          saveAppData();
           navigateTo('profile');
           showToast('Logo berhasil diupload!');
         };
@@ -719,16 +702,16 @@
       }
     }
 
-    async function handleTeacherPhotoUpload(event) {
+    function handleTeacherPhotoUpload(event) {
       const file = event.target.files[0];
       if (file) {
         const reader = new FileReader();
-        reader.onload = async function(e) {
+        reader.onload = function (e) {
           const teacherIdx = appData.teachers.findIndex(t => t.username === currentUser.username);
           if (teacherIdx !== -1) {
             appData.teachers[teacherIdx].foto = e.target.result;
             currentUser.foto = e.target.result;
-            await saveAppData();
+            saveAppData();
             navigateTo('profile');
             showToast('Foto profil berhasil diupload!');
           }
@@ -737,40 +720,40 @@
       }
     }
 
-    async function updateSchoolProfile(field, value) {
+    function updateSchoolProfile(field, value) {
       appData.schoolProfile[field] = value;
-      await saveAppData();
+      saveAppData();
       showToast('Data berhasil disimpan!');
     }
 
-    async function updateTeacherNamaLengkap(newNama) {
+    function updateTeacherNamaLengkap(newNama) {
       const teacherIdx = appData.teachers.findIndex(t => t.username === currentUser.username);
       if (teacherIdx !== -1) {
         appData.teachers[teacherIdx].namaLengkap = newNama;
         currentUser.namaLengkap = newNama;
-        await saveAppData();
+        saveAppData();
         showToast('Nama lengkap berhasil diperbarui!');
         renderApp();
       }
     }
 
-    async function updateTeacherNIP(newNIP) {
+    function updateTeacherNIP(newNIP) {
       const teacherIdx = appData.teachers.findIndex(t => t.username === currentUser.username);
       if (teacherIdx !== -1) {
         appData.teachers[teacherIdx].nip = newNIP;
         currentUser.nip = newNIP;
-        await saveAppData();
+        saveAppData();
         showToast('NIP berhasil diperbarui!');
         renderApp();
       }
     }
 
-    async function updateTeacherKelas(newKelas) {
+    function updateTeacherKelas(newKelas) {
       const teacherIdx = appData.teachers.findIndex(t => t.username === currentUser.username);
       if (teacherIdx !== -1) {
         appData.teachers[teacherIdx].kelas = newKelas;
         currentUser.kelas = newKelas;
-        await saveAppData();
+        saveAppData();
         showToast('Kelas berhasil diperbarui!');
         renderApp();
       }
@@ -783,7 +766,7 @@
     function renderStudents() {
       const myStudents = appData.students.filter(s => s.kelas === currentUser.kelas);
       const daysInMonth = new Date(selectedYear, selectedMonth + 1, 0).getDate();
-      
+
       return `
         <div class="space-y-6">
           <div class="flex items-center justify-between">
@@ -818,8 +801,8 @@
                       <td class="px-4 py-3 text-sm">${i + 1}</td>
                       <td class="px-4 py-3">
                         <div class="w-10 h-10 rounded-full bg-gray-200 overflow-hidden">
-                          ${s.foto ? `<img src="${s.foto}" class="w-full h-full object-cover" loading="lazy" onerror="this.src=''; this.parentElement.innerHTML='<span class=\\'flex items-center justify-center h-full text-gray-500 font-medium\\'>${s.nama.charAt(0)}</span>';">` : 
-                          `<span class="flex items-center justify-center h-full text-gray-500 font-medium">${s.nama.charAt(0)}</span>`}
+                          ${s.foto ? `<img src="${s.foto}" class="w-full h-full object-cover" loading="lazy" onerror="this.src=''; this.parentElement.innerHTML='<span class=\\'flex items-center justify-center h-full text-gray-500 font-medium\\'>${s.nama.charAt(0)}</span>';">` :
+          `<span class="flex items-center justify-center h-full text-gray-500 font-medium">${s.nama.charAt(0)}</span>`}
                         </div>
                       </td>
                       <td class="px-4 py-3 text-sm font-medium" style="color: ${config.text_color}">${s.nama}</td>
@@ -865,7 +848,7 @@
                 <div class="flex items-center gap-2">
                   <label class="text-sm text-gray-600">Tahun:</label>
                   <select onchange="changeAttendanceYear(this.value)" class="px-3 py-1.5 border rounded-lg text-sm">
-                    ${Array.from({length: 26}, (_, i) => 2025 + i).map(year => `<option value="${year}" ${year === selectedYear ? 'selected' : ''}>${year}</option>`).join('')}
+                    ${Array.from({ length: 26 }, (_, i) => 2025 + i).map(year => `<option value="${year}" ${year === selectedYear ? 'selected' : ''}>${year}</option>`).join('')}
                   </select>
                 </div>
                 <div class="flex items-center gap-2">
@@ -881,34 +864,34 @@
                 <thead class="bg-gray-50">
                   <tr>
                     <th class="px-3 py-2 text-left font-medium text-gray-500 sticky left-0 bg-gray-50">Nama</th>
-                    ${Array.from({length: Math.min(daysInMonth, 31)}, (_, i) => `<th class="px-2 py-2 text-center font-medium text-gray-500 min-w-[36px]">${i + 1}</th>`).join('')}
+                    ${Array.from({ length: Math.min(daysInMonth, 31) }, (_, i) => `<th class="px-2 py-2 text-center font-medium text-gray-500 min-w-[36px]">${i + 1}</th>`).join('')}
                     <th class="px-3 py-2 text-center font-medium text-gray-500">%</th>
                   </tr>
                 </thead>
                 <tbody class="divide-y divide-gray-100">
                   ${myStudents.map(s => {
-                    const attendance = s.attendance || {};
-                    const monthKey = `${selectedYear}-${String(selectedMonth + 1).padStart(2, '0')}`;
-                    const monthAttendance = attendance[monthKey] || {};
-                    let hadirCount = 0;
-                    for (let d = 1; d <= daysInMonth; d++) {
-                      if (monthAttendance[d] === 'H') hadirCount++;
-                    }
-                    const percentage = Math.round((hadirCount / daysInMonth) * 100);
-                    
-                    return `
+            const attendance = s.attendance || {};
+            const monthKey = `${selectedYear}-${String(selectedMonth + 1).padStart(2, '0')}`;
+            const monthAttendance = attendance[monthKey] || {};
+            let hadirCount = 0;
+            for (let d = 1; d <= daysInMonth; d++) {
+              if (monthAttendance[d] === 'H') hadirCount++;
+            }
+            const percentage = Math.round((hadirCount / daysInMonth) * 100);
+
+            return `
                       <tr class="hover:bg-gray-50">
                         <td class="px-3 py-2 font-medium sticky left-0 bg-white" style="color: ${config.text_color}">${s.nama}</td>
-                        ${Array.from({length: Math.min(daysInMonth, 31)}, (_, i) => {
-                          const day = i + 1;
-                          const status = monthAttendance[day] || '';
-                          const bgColor = status === 'H' ? 'bg-green-500' : status === 'I' ? 'bg-yellow-500' : status === 'S' ? 'bg-blue-500' : status === 'A' ? 'bg-red-500' : 'bg-gray-100';
-                          return `<td class="px-1 py-1 text-center"><button onclick="toggleAttendance('${s.id}', ${day})" class="w-7 h-7 rounded ${bgColor} text-white text-xs font-medium hover:opacity-80 transition">${status || '-'}</button></td>`;
-                        }).join('')}
+                        ${Array.from({ length: Math.min(daysInMonth, 31) }, (_, i) => {
+              const day = i + 1;
+              const status = monthAttendance[day] || '';
+              const bgColor = status === 'H' ? 'bg-green-500' : status === 'I' ? 'bg-yellow-500' : status === 'S' ? 'bg-blue-500' : status === 'A' ? 'bg-red-500' : 'bg-gray-100';
+              return `<td class="px-1 py-1 text-center"><button onclick="toggleAttendance('${s.id}', ${day})" class="w-7 h-7 rounded ${bgColor} text-white text-xs font-medium hover:opacity-80 transition">${status || '-'}</button></td>`;
+            }).join('')}
                         <td class="px-3 py-2 text-center font-medium ${percentage >= 80 ? 'text-green-600' : 'text-red-600'}">${percentage}%</td>
                       </tr>
                     `;
-                  }).join('')}
+          }).join('')}
                 </tbody>
               </table>
             </div>
@@ -940,19 +923,19 @@
             <h4 class="font-medium mb-3" style="color: ${config.text_color}">Rekap Per Siswa</h4>
             <div class="grid md:grid-cols-2 lg:grid-cols-3 gap-3">
               ${myStudents.map(s => {
-                const hCount = countStatus(s, 'H');
-                const iCount = countStatus(s, 'I');
-                const sCount = countStatus(s, 'S');
-                const aCount = countStatus(s, 'A');
-                const total = daysInMonth;
-                const percentage = Math.round((hCount / total) * 100);
-                
-                return `
+            const hCount = countStatus(s, 'H');
+            const iCount = countStatus(s, 'I');
+            const sCount = countStatus(s, 'S');
+            const aCount = countStatus(s, 'A');
+            const total = daysInMonth;
+            const percentage = Math.round((hCount / total) * 100);
+
+            return `
                   <div class="border rounded-lg p-3 bg-gray-50">
                     <div class="flex items-center gap-2 mb-2">
                       <div class="w-8 h-8 rounded-full bg-gray-200 overflow-hidden flex-shrink-0">
-                        ${s.foto ? `<img src="${s.foto}" class="w-full h-full object-cover" loading="lazy" onerror="this.src=''; this.parentElement.innerHTML='<span class=\\'flex items-center justify-center h-full text-xs text-gray-500 font-medium\\'>${s.nama.charAt(0)}</span>';">` : 
-                        `<span class="flex items-center justify-center h-full text-xs text-gray-500 font-medium">${s.nama.charAt(0)}</span>`}
+                        ${s.foto ? `<img src="${s.foto}" class="w-full h-full object-cover" loading="lazy" onerror="this.src=''; this.parentElement.innerHTML='<span class=\\'flex items-center justify-center h-full text-xs text-gray-500 font-medium\\'>${s.nama.charAt(0)}</span>';">` :
+                `<span class="flex items-center justify-center h-full text-xs text-gray-500 font-medium">${s.nama.charAt(0)}</span>`}
                       </div>
                       <div class="flex-1">
                         <p class="text-sm font-medium" style="color: ${config.text_color}">${s.nama}</p>
@@ -979,7 +962,7 @@
                     </div>
                   </div>
                 `;
-              }).join('')}
+          }).join('')}
             </div>
           </div>
 
@@ -988,17 +971,17 @@
             <h3 class="font-semibold mb-4" style="color: ${config.text_color}">Grafik Kehadiran</h3>
             <div class="space-y-3">
               ${myStudents.map(s => {
-                const hCount = countStatus(s, 'H');
-                const iCount = countStatus(s, 'I');
-                const sCount = countStatus(s, 'S');
-                const aCount = countStatus(s, 'A');
-                const total = hCount + iCount + sCount + aCount || 1;
-                const hPercent = Math.round((hCount / total) * 100);
-                const iPercent = Math.round((iCount / total) * 100);
-                const sPercent = Math.round((sCount / total) * 100);
-                const aPercent = Math.round((aCount / total) * 100);
-                
-                return `
+            const hCount = countStatus(s, 'H');
+            const iCount = countStatus(s, 'I');
+            const sCount = countStatus(s, 'S');
+            const aCount = countStatus(s, 'A');
+            const total = hCount + iCount + sCount + aCount || 1;
+            const hPercent = Math.round((hCount / total) * 100);
+            const iPercent = Math.round((iCount / total) * 100);
+            const sPercent = Math.round((sCount / total) * 100);
+            const aPercent = Math.round((aCount / total) * 100);
+
+            return `
                   <div>
                     <div class="flex items-center justify-between mb-1">
                       <span class="text-sm font-medium" style="color: ${config.text_color}">${s.nama}</span>
@@ -1012,7 +995,7 @@
                     </div>
                   </div>
                 `;
-              }).join('')}
+          }).join('')}
             </div>
           </div>
         </div>
@@ -1035,49 +1018,34 @@
       return Object.values(monthAttendance).filter(s => s === status).length;
     }
 
-    async function toggleAttendance(studentId, day) {
+    function toggleAttendance(studentId, day) {
       const studentIdx = appData.students.findIndex(s => s.id === studentId);
       if (studentIdx === -1) return;
-      
+
       const monthKey = `${selectedYear}-${String(selectedMonth + 1).padStart(2, '0')}`;
-      
+
       if (!appData.students[studentIdx].attendance) {
         appData.students[studentIdx].attendance = {};
       }
       if (!appData.students[studentIdx].attendance[monthKey]) {
         appData.students[studentIdx].attendance[monthKey] = {};
       }
-      
+
       const currentStatus = appData.students[studentIdx].attendance[monthKey][day] || '';
       const statuses = ['', 'H', 'I', 'S', 'A'];
       const nextIdx = (statuses.indexOf(currentStatus) + 1) % statuses.length;
-      
-      if (statuses[nextIdx] === '') {
-        // Hapus entry jika kosong
-        delete appData.students[studentIdx].attendance[monthKey][day];
-      } else {
-        appData.students[studentIdx].attendance[monthKey][day] = statuses[nextIdx];
+      appData.students[studentIdx].attendance[monthKey][day] = statuses[nextIdx];
+
+      // Update attendance rate
+      const monthAttendance = appData.students[studentIdx].attendance[monthKey];
+      const daysInMonth = new Date(selectedYear, selectedMonth + 1, 0).getDate();
+      let hadirCount = 0;
+      for (let d = 1; d <= daysInMonth; d++) {
+        if (monthAttendance[d] === 'H') hadirCount++;
       }
-      
-      // Update attendance rate (calculate from days that have been filled in only)
-      const attendance = appData.students[studentIdx].attendance;
-      let totalHadir = 0;
-      let totalDays = 0;
-      
-      Object.keys(attendance).forEach(monthKey => {
-        const monthAttendance = attendance[monthKey];
-        
-        Object.values(monthAttendance).forEach(status => {
-          if (status && status !== '') {
-            totalDays++;
-            if (status === 'H') totalHadir++;
-          }
-        });
-      });
-      
-      appData.students[studentIdx].attendanceRate = totalDays > 0 ? Math.round((totalHadir / totalDays) * 100) : 0;
-      
-      await saveAppData();
+      appData.students[studentIdx].attendanceRate = Math.round((hadirCount / daysInMonth) * 100);
+
+      saveAppData();
       navigateTo('students');
     }
 
@@ -1120,31 +1088,31 @@
         </div>
       `;
       document.body.appendChild(modal);
-      
+
       let photoData = '';
-      document.getElementById('student-photo-input').onchange = function(e) {
+      document.getElementById('student-photo-input').onchange = function (e) {
         const file = e.target.files[0];
         if (file) {
           const reader = new FileReader();
-          reader.onload = function(ev) {
+          reader.onload = function (ev) {
             photoData = ev.target.result;
             document.getElementById('student-photo-preview').innerHTML = `<img src="${photoData}" class="w-full h-full object-cover" loading="lazy">`;
           };
           reader.readAsDataURL(file);
         }
       };
-      
+
       modal.querySelector('.cancel-btn').onclick = () => modal.remove();
-      modal.querySelector('.save-btn').onclick = async () => {
+      modal.querySelector('.save-btn').onclick = () => {
         const nama = document.getElementById('student-nama').value.trim();
         const nis = document.getElementById('student-nis').value.trim();
         const gender = document.getElementById('student-gender').value;
-        
+
         if (!nama || !nis) {
           showToast('Mohon lengkapi semua data!', 'error');
           return;
         }
-        
+
         const newStudent = {
           id: Date.now().toString(),
           nama,
@@ -1156,20 +1124,20 @@
           attendanceRate: 0,
           avgGrade: 0
         };
-        
+
         appData.students.push(newStudent);
-        await saveAppData();
+        saveAppData();
         modal.remove();
         navigateTo('students');
         showToast('Siswa berhasil ditambahkan!');
       };
-      modal.onclick = (e) => { if(e.target === modal) modal.remove(); };
+      modal.onclick = (e) => { if (e.target === modal) modal.remove(); };
     }
 
     function showEditStudentModal(studentId) {
       const student = appData.students.find(s => s.id === studentId);
       if (!student) return;
-      
+
       const modal = document.createElement('div');
       modal.className = 'fixed inset-0 modal-overlay flex items-center justify-center z-50';
       modal.innerHTML = `
@@ -1178,8 +1146,8 @@
           <div class="space-y-4">
             <div class="flex justify-center">
               <div class="w-24 h-24 rounded-full border-2 border-dashed border-gray-300 flex items-center justify-center overflow-hidden bg-gray-50" id="edit-student-photo-preview">
-                ${student.foto ? `<img src="${student.foto}" class="w-full h-full object-cover" loading="lazy">` : 
-                `<svg class="w-8 h-8 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/></svg>`}
+                ${student.foto ? `<img src="${student.foto}" class="w-full h-full object-cover" loading="lazy">` :
+          `<svg class="w-8 h-8 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/></svg>`}
               </div>
             </div>
             <div>
@@ -1209,41 +1177,41 @@
         </div>
       `;
       document.body.appendChild(modal);
-      
+
       let photoData = student.foto;
-      document.getElementById('edit-student-photo-input').onchange = function(e) {
+      document.getElementById('edit-student-photo-input').onchange = function (e) {
         const file = e.target.files[0];
         if (file) {
           const reader = new FileReader();
-          reader.onload = function(ev) {
+          reader.onload = function (ev) {
             photoData = ev.target.result;
             document.getElementById('edit-student-photo-preview').innerHTML = `<img src="${photoData}" class="w-full h-full object-cover" loading="lazy">`;
           };
           reader.readAsDataURL(file);
         }
       };
-      
+
       modal.querySelector('.cancel-btn').onclick = () => modal.remove();
-      modal.querySelector('.save-btn').onclick = async () => {
+      modal.querySelector('.save-btn').onclick = () => {
         const studentIdx = appData.students.findIndex(s => s.id === studentId);
         if (studentIdx !== -1) {
           appData.students[studentIdx].nama = document.getElementById('edit-student-nama').value.trim();
           appData.students[studentIdx].nis = document.getElementById('edit-student-nis').value.trim();
           appData.students[studentIdx].gender = document.getElementById('edit-student-gender').value;
           appData.students[studentIdx].foto = photoData;
-          await saveAppData();
+          saveAppData();
           modal.remove();
           navigateTo('students');
           showToast('Data siswa berhasil diperbarui!');
         }
       };
-      modal.onclick = (e) => { if(e.target === modal) modal.remove(); };
+      modal.onclick = (e) => { if (e.target === modal) modal.remove(); };
     }
 
-    async function deleteStudent(studentId) {
-      showModal('Hapus Siswa', 'Apakah Anda yakin ingin menghapus data siswa ini?', async () => {
+    function deleteStudent(studentId) {
+      showModal('Hapus Siswa', 'Apakah Anda yakin ingin menghapus data siswa ini?', () => {
         appData.students = appData.students.filter(s => s.id !== studentId);
-        await saveAppData();
+        saveAppData();
         navigateTo('students');
         showToast('Siswa berhasil dihapus!');
       });
@@ -1252,7 +1220,7 @@
     // ===================== SUBJECTS & GRADES =====================
     function renderSubjects() {
       const mySubjects = appData.subjects.filter(s => s.kelas === currentUser.kelas);
-      
+
       return `
         <div class="space-y-6">
           <div class="flex items-center justify-between">
@@ -1326,18 +1294,18 @@
         </div>
       `;
       document.body.appendChild(modal);
-      
+
       modal.querySelector('.cancel-btn').onclick = () => modal.remove();
-      modal.querySelector('.save-btn').onclick = async () => {
+      modal.querySelector('.save-btn').onclick = () => {
         const nama = document.getElementById('subject-nama').value.trim();
         const materiInputs = document.querySelectorAll('.materi-input');
         const materi = Array.from(materiInputs).map(input => input.value.trim()).filter(m => m);
-        
+
         if (!nama) {
           showToast('Mohon masukkan nama mata pelajaran!', 'error');
           return;
         }
-        
+
         const newSubject = {
           id: Date.now().toString(),
           nama,
@@ -1345,14 +1313,14 @@
           kelas: currentUser.kelas,
           teacher: currentUser.username
         };
-        
+
         appData.subjects.push(newSubject);
-        await saveAppData();
+        saveAppData();
         modal.remove();
         navigateTo('subjects');
         showToast('Mata pelajaran berhasil ditambahkan!');
       };
-      modal.onclick = (e) => { if(e.target === modal) modal.remove(); };
+      modal.onclick = (e) => { if (e.target === modal) modal.remove(); };
     }
 
     function addMateriInput() {
@@ -1371,7 +1339,7 @@
     function showEditSubjectModal(subjectId) {
       const subject = appData.subjects.find(s => s.id === subjectId);
       if (!subject) return;
-      
+
       const modal = document.createElement('div');
       modal.className = 'fixed inset-0 modal-overlay flex items-center justify-center z-50';
       modal.innerHTML = `
@@ -1407,21 +1375,21 @@
         </div>
       `;
       document.body.appendChild(modal);
-      
+
       modal.querySelector('.cancel-btn').onclick = () => modal.remove();
-      modal.querySelector('.save-btn').onclick = async () => {
+      modal.querySelector('.save-btn').onclick = () => {
         const subjectIdx = appData.subjects.findIndex(s => s.id === subjectId);
         if (subjectIdx !== -1) {
           const materiInputs = document.querySelectorAll('.edit-materi-input');
           appData.subjects[subjectIdx].nama = document.getElementById('edit-subject-nama').value.trim();
           appData.subjects[subjectIdx].materi = Array.from(materiInputs).map(input => input.value.trim()).filter(m => m);
-          await saveAppData();
+          saveAppData();
           modal.remove();
           navigateTo('subjects');
           showToast('Mata pelajaran berhasil diperbarui!');
         }
       };
-      modal.onclick = (e) => { if(e.target === modal) modal.remove(); };
+      modal.onclick = (e) => { if (e.target === modal) modal.remove(); };
     }
 
     function addEditMateriInput() {
@@ -1437,10 +1405,10 @@
       list.appendChild(div);
     }
 
-    async function deleteSubject(subjectId) {
-      showModal('Hapus Mata Pelajaran', 'Apakah Anda yakin ingin menghapus mata pelajaran ini?', async () => {
+    function deleteSubject(subjectId) {
+      showModal('Hapus Mata Pelajaran', 'Apakah Anda yakin ingin menghapus mata pelajaran ini?', () => {
         appData.subjects = appData.subjects.filter(s => s.id !== subjectId);
-        await saveAppData();
+        saveAppData();
         navigateTo('subjects');
         showToast('Mata pelajaran berhasil dihapus!');
       });
@@ -1450,14 +1418,14 @@
       const subject = appData.subjects.find(s => s.id === subjectId);
       const myStudents = appData.students.filter(s => s.kelas === currentUser.kelas);
       if (!subject) return;
-      
+
       // Get or initialize grades for this subject
       let subjectGrades = appData.grades.find(g => g.subjectId === subjectId);
       if (!subjectGrades) {
         subjectGrades = { subjectId, studentGrades: {} };
         appData.grades.push(subjectGrades);
       }
-      
+
       const modal = document.createElement('div');
       modal.className = 'fixed inset-0 modal-overlay flex items-center justify-center z-50';
       modal.innerHTML = `
@@ -1492,42 +1460,42 @@
                 </tr>
                 <tr>
                   ${['LM1', 'LM2', 'LM3', 'LM4', 'LM5'].map((lm, lmIdx) => {
-                    const bgColors = ['bg-blue-50', 'bg-green-50', 'bg-yellow-50', 'bg-purple-50', 'bg-pink-50'];
-                    return Array.from({length: 5}, (_, i) => `<th class="border border-gray-300 px-1 py-1 text-center text-xs ${bgColors[lmIdx]} min-w-[60px]">TP${i+1}</th>`).join('') + 
-                      `<th class="border border-gray-300 px-1 py-1 text-center text-xs font-bold ${bgColors[lmIdx]} min-w-[60px]">Avg</th>`;
-                  }).join('')}
-                  ${Array.from({length: 5}, (_, i) => `<th class="border border-gray-300 px-1 py-1 text-center text-xs bg-orange-50 min-w-[60px]">SLM${i+1}</th>`).join('')}
+        const bgColors = ['bg-blue-50', 'bg-green-50', 'bg-yellow-50', 'bg-purple-50', 'bg-pink-50'];
+        return Array.from({ length: 5 }, (_, i) => `<th class="border border-gray-300 px-1 py-1 text-center text-xs ${bgColors[lmIdx]} min-w-[60px]">TP${i + 1}</th>`).join('') +
+          `<th class="border border-gray-300 px-1 py-1 text-center text-xs font-bold ${bgColors[lmIdx]} min-w-[60px]">Avg</th>`;
+      }).join('')}
+                  ${Array.from({ length: 5 }, (_, i) => `<th class="border border-gray-300 px-1 py-1 text-center text-xs bg-orange-50 min-w-[60px]">SLM${i + 1}</th>`).join('')}
                 </tr>
               </thead>
               <tbody>
                 ${myStudents.map(student => {
-                  const grades = subjectGrades.studentGrades[student.id] || {};
-                  return `
+        const grades = subjectGrades.studentGrades[student.id] || {};
+        return `
                     <tr class="hover:bg-gray-50">
                       <td class="border border-gray-300 px-3 py-2 font-medium sticky left-0 bg-white z-10">${student.nama}</td>
                       ${['LM1', 'LM2', 'LM3', 'LM4', 'LM5'].map(lm => {
-                        const tpInputs = Array.from({length: 5}, (_, i) => `
+          const tpInputs = Array.from({ length: 5 }, (_, i) => `
                           <td class="border border-gray-300 px-1 py-1">
                             <input type="number" min="0" max="100" 
                               class="w-full px-2 py-1 text-center text-xs border border-gray-200 rounded focus:border-blue-400 focus:outline-none grade-input" 
-                              data-student="${student.id}" data-type="${lm}_TP${i+1}" data-lm="${lm}"
-                              value="${grades[`${lm}_TP${i+1}`] || ''}"
-                              onchange="updateGrade('${subjectId}', '${student.id}', '${lm}_TP${i+1}', this.value)">
+                              data-student="${student.id}" data-type="${lm}_TP${i + 1}" data-lm="${lm}"
+                              value="${grades[`${lm}_TP${i + 1}`] || ''}"
+                              onchange="updateGrade('${subjectId}', '${student.id}', '${lm}_TP${i + 1}', this.value)">
                           </td>
                         `).join('');
-                        
-                        const lmValues = Array.from({length: 5}, (_, i) => grades[`${lm}_TP${i+1}`]).filter(v => v !== null && v !== undefined && !isNaN(v));
-                        const lmAvg = lmValues.length > 0 ? Math.round(lmValues.reduce((a, b) => a + b, 0) / lmValues.length) : '-';
-                        
-                        return tpInputs + `<td class="border border-gray-300 px-2 py-1 text-center font-bold bg-gray-100 text-xs" id="avg-${lm}-${student.id}">${lmAvg}</td>`;
-                      }).join('')}
-                      ${Array.from({length: 5}, (_, i) => `
+
+          const lmValues = Array.from({ length: 5 }, (_, i) => grades[`${lm}_TP${i + 1}`]).filter(v => v !== null && v !== undefined && !isNaN(v));
+          const lmAvg = lmValues.length > 0 ? Math.round(lmValues.reduce((a, b) => a + b, 0) / lmValues.length) : '-';
+
+          return tpInputs + `<td class="border border-gray-300 px-2 py-1 text-center font-bold bg-gray-100 text-xs" id="avg-${lm}-${student.id}">${lmAvg}</td>`;
+        }).join('')}
+                      ${Array.from({ length: 5 }, (_, i) => `
                         <td class="border border-gray-300 px-1 py-1">
                           <input type="number" min="0" max="100" 
                             class="w-full px-2 py-1 text-center text-xs border border-gray-200 rounded focus:border-blue-400 focus:outline-none grade-input" 
-                            data-student="${student.id}" data-type="SLM${i+1}"
-                            value="${grades[`SLM${i+1}`] || ''}"
-                            onchange="updateGrade('${subjectId}', '${student.id}', 'SLM${i+1}', this.value)">
+                            data-student="${student.id}" data-type="SLM${i + 1}"
+                            value="${grades[`SLM${i + 1}`] || ''}"
+                            onchange="updateGrade('${subjectId}', '${student.id}', 'SLM${i + 1}', this.value)">
                         </td>
                       `).join('')}
                       <td class="border border-gray-300 px-1 py-1">
@@ -1542,7 +1510,7 @@
                       </td>
                     </tr>
                   `;
-                }).join('')}
+      }).join('')}
               </tbody>
             </table>
           </div>
@@ -1554,7 +1522,7 @@
       document.body.appendChild(modal);
     }
 
-    async function updateGrade(subjectId, studentId, gradeType, value) {
+    function updateGrade(subjectId, studentId, gradeType, value) {
       let subjectGrades = appData.grades.find(g => g.subjectId === subjectId);
       if (!subjectGrades) {
         subjectGrades = { subjectId, studentGrades: {} };
@@ -1564,11 +1532,11 @@
         subjectGrades.studentGrades[studentId] = {};
       }
       subjectGrades.studentGrades[studentId][gradeType] = value ? parseInt(value) : null;
-      
+
       // Update LM average if it's a TP grade
       if (gradeType.includes('_TP')) {
         const lm = gradeType.split('_')[0]; // Extract LM1, LM2, etc.
-        const lmValues = Array.from({length: 5}, (_, i) => subjectGrades.studentGrades[studentId][`${lm}_TP${i+1}`])
+        const lmValues = Array.from({ length: 5 }, (_, i) => subjectGrades.studentGrades[studentId][`${lm}_TP${i + 1}`])
           .filter(v => v !== null && v !== undefined && !isNaN(v));
         const lmAvg = lmValues.length > 0 ? Math.round(lmValues.reduce((a, b) => a + b, 0) / lmValues.length) : '-';
         const lmAvgEl = document.getElementById(`avg-${lm}-${studentId}`);
@@ -1576,17 +1544,17 @@
           lmAvgEl.textContent = lmAvg;
         }
       }
-      
+
       // Update average display
       const avgEl = document.getElementById(`avg-${studentId}`);
       if (avgEl) {
         avgEl.textContent = calculateStudentAverage(subjectGrades.studentGrades[studentId]);
       }
-      
+
       // Update student's overall average
       updateStudentOverallAverage(studentId);
-      
-      await saveAppData();
+
+      saveAppData();
     }
 
     function calculateStudentAverage(grades) {
@@ -1599,7 +1567,7 @@
     function updateStudentOverallAverage(studentId) {
       const studentIdx = appData.students.findIndex(s => s.id === studentId);
       if (studentIdx === -1) return;
-      
+
       let totalGrades = [];
       appData.grades.forEach(subjectGrade => {
         const studentGrades = subjectGrade.studentGrades[studentId];
@@ -1608,7 +1576,7 @@
           totalGrades = totalGrades.concat(values);
         }
       });
-      
+
       if (totalGrades.length > 0) {
         appData.students[studentIdx].avgGrade = Math.round(totalGrades.reduce((a, b) => a + b, 0) / totalGrades.length);
       }
@@ -1619,7 +1587,7 @@
       const myJournals = appData.journals.filter(j => j.teacher === currentUser.username);
       const mySubjects = appData.subjects.filter(s => s.kelas === currentUser.kelas);
       const myStudents = appData.students.filter(s => s.kelas === currentUser.kelas);
-      
+
       return `
         <div class="space-y-6">
           <div class="flex items-center justify-between">
@@ -1654,8 +1622,8 @@
                       <td class="px-4 py-3 text-sm">${j.subBab || '-'}</td>
                       <td class="px-4 py-3 text-sm">${j.tidakHadir || '-'}</td>
                       <td class="px-4 py-3 text-sm max-w-xs">
-                        ${j.kejadianKhusus && j.kejadianKhusus.length > 0 ? 
-                          j.kejadianKhusus.map(k => `<span class="inline-block px-2 py-0.5 text-xs rounded-full bg-amber-100 text-amber-700 mr-1 mb-1">${k.siswa}: ${k.kejadian}</span>`).join('') : '-'}
+                        ${j.kejadianKhusus && j.kejadianKhusus.length > 0 ?
+          j.kejadianKhusus.map(k => `<span class="inline-block px-2 py-0.5 text-xs rounded-full bg-amber-100 text-amber-700 mr-1 mb-1">${k.siswa}: ${k.kejadian}</span>`).join('') : '-'}
                       </td>
                       <td class="px-4 py-3 text-center">
                         <div class="flex items-center justify-center gap-2">
@@ -1680,7 +1648,7 @@
     function showAddJournalModal() {
       const mySubjects = appData.subjects.filter(s => s.kelas === currentUser.kelas);
       const myStudents = appData.students.filter(s => s.kelas === currentUser.kelas);
-      
+
       const modal = document.createElement('div');
       modal.className = 'fixed inset-0 modal-overlay flex items-center justify-center z-50';
       modal.innerHTML = `
@@ -1715,19 +1683,19 @@
               <div class="max-h-60 overflow-y-auto border rounded-lg p-3 bg-gray-50">
                 <div class="grid grid-cols-1 gap-2">
                   ${myStudents.map(s => {
-                    // Get attendance from data presensi for the selected date
-                    const tanggalInput = document.getElementById('journal-tanggal');
-                    let defaultStatus = 'H';
-                    if (tanggalInput && tanggalInput.value) {
-                      const date = new Date(tanggalInput.value);
-                      const monthKey = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
-                      const day = date.getDate();
-                      const attendance = s.attendance || {};
-                      const monthAttendance = attendance[monthKey] || {};
-                      defaultStatus = monthAttendance[day] || 'H';
-                    }
-                    
-                    return `
+        // Get attendance from data presensi for the selected date
+        const tanggalInput = document.getElementById('journal-tanggal');
+        let defaultStatus = 'H';
+        if (tanggalInput && tanggalInput.value) {
+          const date = new Date(tanggalInput.value);
+          const monthKey = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
+          const day = date.getDate();
+          const attendance = s.attendance || {};
+          const monthAttendance = attendance[monthKey] || {};
+          defaultStatus = monthAttendance[day] || 'H';
+        }
+
+        return `
                     <div class="flex items-center justify-between bg-white p-2 rounded">
                       <span class="text-sm font-medium">${s.nama}</span>
                       <select id="presence-${s.id}" class="px-2 py-1 border rounded text-sm">
@@ -1759,15 +1727,15 @@
         </div>
       `;
       document.body.appendChild(modal);
-      
+
       modal.querySelector('.cancel-btn').onclick = () => modal.remove();
-      modal.querySelector('.save-btn').onclick = async () => {
+      modal.querySelector('.save-btn').onclick = () => {
         const tanggal = document.getElementById('journal-tanggal').value;
         const mapelSelect = document.getElementById('journal-mapel');
         const mapel = mapelSelect.options[mapelSelect.selectedIndex]?.dataset.nama || '';
         const materi = document.getElementById('journal-materi').value;
         const subBab = document.getElementById('journal-subbab').value;
-        
+
         // Get presence data
         const presenceData = {};
         const tidakHadirList = [];
@@ -1781,13 +1749,13 @@
             }
           }
         });
-        
+
         // Save to attendance
         if (tanggal) {
           const date = new Date(tanggal);
           const monthKey = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
           const day = date.getDate();
-          
+
           myStudents.forEach(s => {
             const studentIdx = appData.students.findIndex(st => st.id === s.id);
             if (studentIdx !== -1) {
@@ -1801,18 +1769,18 @@
             }
           });
         }
-        
+
         const kejadianInputs = document.querySelectorAll('.kejadian-row');
         const kejadianKhusus = Array.from(kejadianInputs).map(row => ({
           siswa: row.querySelector('.kejadian-siswa').value,
           kejadian: row.querySelector('.kejadian-text').value
         })).filter(k => k.siswa && k.kejadian);
-        
+
         if (!tanggal || !mapel) {
           showToast('Mohon lengkapi tanggal dan mata pelajaran!', 'error');
           return;
         }
-        
+
         const newJournal = {
           id: Date.now().toString(),
           tanggal,
@@ -1825,24 +1793,24 @@
           teacher: currentUser.username,
           kelas: currentUser.kelas
         };
-        
+
         appData.journals.push(newJournal);
-        await saveAppData();
+        saveAppData();
         modal.remove();
         navigateTo('journal');
         showToast('Jurnal berhasil ditambahkan!');
       };
-      modal.onclick = (e) => { if(e.target === modal) modal.remove(); };
+      modal.onclick = (e) => { if (e.target === modal) modal.remove(); };
     }
 
     function updateMateriOptions() {
       const mapelSelect = document.getElementById('journal-mapel');
       const materiSelect = document.getElementById('journal-materi');
       const subjectId = mapelSelect.value;
-      
+
       const subject = appData.subjects.find(s => s.id === subjectId);
       materiSelect.innerHTML = '<option value="">-- Pilih Materi --</option>';
-      
+
       if (subject && subject.materi) {
         subject.materi.forEach(m => {
           materiSelect.innerHTML += `<option value="${m}">${m}</option>`;
@@ -1871,11 +1839,11 @@
     function showEditJournalModal(journalId) {
       const journal = appData.journals.find(j => j.id === journalId);
       if (!journal) return;
-      
+
       const mySubjects = appData.subjects.filter(s => s.kelas === currentUser.kelas);
       const myStudents = appData.students.filter(s => s.kelas === currentUser.kelas);
       const selectedSubject = mySubjects.find(s => s.nama === journal.mapel);
-      
+
       const modal = document.createElement('div');
       modal.className = 'fixed inset-0 modal-overlay flex items-center justify-center z-50';
       modal.innerHTML = `
@@ -1911,8 +1879,8 @@
               <div class="max-h-60 overflow-y-auto border rounded-lg p-3 bg-gray-50">
                 <div class="grid grid-cols-1 gap-2">
                   ${myStudents.map(s => {
-                    const currentPresence = journal.presenceData ? journal.presenceData[s.id] : 'H';
-                    return `
+        const currentPresence = journal.presenceData ? journal.presenceData[s.id] : 'H';
+        return `
                     <div class="flex items-center justify-between bg-white p-2 rounded">
                       <span class="text-sm font-medium">${s.nama}</span>
                       <select id="edit-presence-${s.id}" class="px-2 py-1 border rounded text-sm">
@@ -1956,14 +1924,14 @@
         </div>
       `;
       document.body.appendChild(modal);
-      
+
       modal.querySelector('.cancel-btn').onclick = () => modal.remove();
-      modal.querySelector('.save-btn').onclick = async () => {
+      modal.querySelector('.save-btn').onclick = () => {
         const journalIdx = appData.journals.findIndex(j => j.id === journalId);
         if (journalIdx !== -1) {
           const mapelSelect = document.getElementById('edit-journal-mapel');
           const tanggal = document.getElementById('edit-journal-tanggal').value;
-          
+
           // Get presence data
           const presenceData = {};
           const tidakHadirList = [];
@@ -1977,13 +1945,13 @@
               }
             }
           });
-          
+
           // Save to attendance
           if (tanggal) {
             const date = new Date(tanggal);
             const monthKey = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
             const day = date.getDate();
-            
+
             myStudents.forEach(s => {
               const studentIdx = appData.students.findIndex(st => st.id === s.id);
               if (studentIdx !== -1) {
@@ -1997,9 +1965,9 @@
               }
             });
           }
-          
+
           const kejadianInputs = document.querySelectorAll('.edit-kejadian-row');
-          
+
           appData.journals[journalIdx].tanggal = tanggal;
           appData.journals[journalIdx].mapel = mapelSelect.options[mapelSelect.selectedIndex]?.dataset.nama || '';
           appData.journals[journalIdx].materi = document.getElementById('edit-journal-materi').value;
@@ -2010,24 +1978,24 @@
             siswa: row.querySelector('.edit-kejadian-siswa').value,
             kejadian: row.querySelector('.edit-kejadian-text').value
           })).filter(k => k.siswa && k.kejadian);
-          
-          await saveAppData();
+
+          saveAppData();
           modal.remove();
           navigateTo('journal');
           showToast('Jurnal berhasil diperbarui!');
         }
       };
-      modal.onclick = (e) => { if(e.target === modal) modal.remove(); };
+      modal.onclick = (e) => { if (e.target === modal) modal.remove(); };
     }
 
     function updateEditMateriOptions() {
       const mapelSelect = document.getElementById('edit-journal-mapel');
       const materiSelect = document.getElementById('edit-journal-materi');
       const subjectId = mapelSelect.value;
-      
+
       const subject = appData.subjects.find(s => s.id === subjectId);
       materiSelect.innerHTML = '<option value="">-- Pilih Materi --</option>';
-      
+
       if (subject && subject.materi) {
         subject.materi.forEach(m => {
           materiSelect.innerHTML += `<option value="${m}">${m}</option>`;
@@ -2053,10 +2021,10 @@
       list.appendChild(div);
     }
 
-    async function deleteJournal(journalId) {
-      showModal('Hapus Jurnal', 'Apakah Anda yakin ingin menghapus jurnal ini?', async () => {
+    function deleteJournal(journalId) {
+      showModal('Hapus Jurnal', 'Apakah Anda yakin ingin menghapus jurnal ini?', () => {
         appData.journals = appData.journals.filter(j => j.id !== journalId);
-        await saveAppData();
+        saveAppData();
         navigateTo('journal');
         showToast('Jurnal berhasil dihapus!');
       });
@@ -2065,7 +2033,7 @@
     // ===================== REPORT CARD =====================
     function renderReport() {
       const myStudents = appData.students.filter(s => s.kelas === currentUser.kelas);
-      
+
       return `
         <div class="space-y-6">
           <div class="flex items-center justify-between">
@@ -2078,8 +2046,8 @@
               ${myStudents.length > 0 ? myStudents.map(s => `
                 <button onclick="generateReport('${s.id}')" class="p-4 rounded-lg border border-gray-200 hover:border-blue-300 hover:bg-blue-50 transition text-left flex items-center gap-3">
                   <div class="w-10 h-10 rounded-full bg-gray-200 overflow-hidden flex-shrink-0">
-                    ${s.foto ? `<img src="${s.foto}" class="w-full h-full object-cover" loading="lazy" onerror="this.src=''; this.parentElement.innerHTML='<span class=\\'flex items-center justify-center h-full text-gray-500 font-medium\\'>${s.nama.charAt(0)}</span>';">` : 
-                    `<span class="flex items-center justify-center h-full text-gray-500 font-medium">${s.nama.charAt(0)}</span>`}
+                    ${s.foto ? `<img src="${s.foto}" class="w-full h-full object-cover" loading="lazy" onerror="this.src=''; this.parentElement.innerHTML='<span class=\\'flex items-center justify-center h-full text-gray-500 font-medium\\'>${s.nama.charAt(0)}</span>';">` :
+          `<span class="flex items-center justify-center h-full text-gray-500 font-medium">${s.nama.charAt(0)}</span>`}
                   </div>
                   <div>
                     <p class="font-medium text-sm" style="color: ${config.text_color}">${s.nama}</p>
@@ -2100,13 +2068,13 @@
     function generateReport(studentId) {
       const student = appData.students.find(s => s.id === studentId);
       if (!student) return;
-      
+
       const mySubjects = appData.subjects.filter(s => s.kelas === currentUser.kelas);
       const myJournals = appData.journals.filter(j => j.teacher === currentUser.username);
-      const studentJournals = myJournals.filter(j => 
+      const studentJournals = myJournals.filter(j =>
         j.kejadianKhusus && j.kejadianKhusus.some(k => k.siswa === student.nama)
       );
-      
+
       // Calculate grades for each subject
       const subjectGrades = mySubjects.map(subj => {
         const gradeData = appData.grades.find(g => g.subjectId === subj.id);
@@ -2117,7 +2085,7 @@
           nilai: avg === '-' ? 0 : avg
         };
       });
-      
+
       const modal = document.createElement('div');
       modal.className = 'fixed inset-0 modal-overlay flex items-center justify-center z-50';
       modal.innerHTML = `
@@ -2137,21 +2105,18 @@
           <div class="flex-1 overflow-auto p-6" id="report-content">
             <div class="bg-white" style="width: 210mm; min-height: 297mm; padding: 15mm 20mm; margin: 0 auto; font-size: 11pt; line-height: 1.4;">
               <!-- Header -->
-              <div class="text-center border-b-2 border-black pb-3 mb-4">
-                <table style="width: 100%; border: none;">
-                  <tr>
-                    <td style="width: 110px; vertical-align: top; border: none;">
-                      ${appData.schoolProfile.logo ? `<img src="${appData.schoolProfile.logo}" style="width: 90px; height: 90px; object-fit: contain; display: block;" loading="lazy">` : '<div style="width: 90px; height: 90px;"></div>'}
-                    </td>
-                    <td style="vertical-align: top; text-align: center; border: none;">
-                      <p class="font-medium mb-1" style="font-size: 13pt;">${appData.schoolProfile.namaLembaga}</p>
-                      <h1 class="font-bold mb-2" style="font-size: 18pt;">${appData.schoolProfile.namaSekolah}</h1>
-                      <p class="leading-snug" style="font-size: 11pt;">${appData.schoolProfile.alamat}, ${appData.schoolProfile.kelurahan}, ${appData.schoolProfile.kecamatan}</p>
-                      <p class="leading-snug" style="font-size: 11pt;">${appData.schoolProfile.kabupaten}, ${appData.schoolProfile.provinsi} ${appData.schoolProfile.kodePos}</p>
-                      <p class="mt-1" style="font-size: 10pt;">Telp: ${appData.schoolProfile.telepon} | Email: ${appData.schoolProfile.email}</p>
-                    </td>
-                  </tr>
-                </table>
+              <div class="text-center border-b-2 border-black pb-2 mb-4">
+                <div class="flex items-center justify-between gap-4">
+                  ${appData.schoolProfile.logo ? `<img src="${appData.schoolProfile.logo}" class="w-20 h-20 object-contain flex-shrink-0" loading="lazy">` : '<div class="w-20 h-20 flex-shrink-0"></div>'}
+                  <div class="flex-1">
+                    <p class="text-sm mb-1 font-medium">${appData.schoolProfile.namaLembaga}</p>
+                    <h1 class="text-xl font-bold mb-1">${appData.schoolProfile.namaSekolah}</h1>
+                    <p class="text-xs leading-snug">${appData.schoolProfile.alamat}, ${appData.schoolProfile.kelurahan}, ${appData.schoolProfile.kecamatan}</p>
+                    <p class="text-xs leading-snug">${appData.schoolProfile.kabupaten}, ${appData.schoolProfile.provinsi} ${appData.schoolProfile.kodePos}</p>
+                    <p class="text-xs mt-1">Telp: ${appData.schoolProfile.telepon} | Email: ${appData.schoolProfile.email}</p>
+                  </div>
+                  <div class="w-20 h-20 flex-shrink-0"></div>
+                </div>
               </div>
 
               <h2 class="text-center text-base font-bold mb-2">LAPORAN HASIL BELAJAR PESERTA DIDIK</h2>
@@ -2169,8 +2134,8 @@
                 <div>
                   <table class="w-full">
                     <tr><td class="w-28">Kelas</td><td>: ${student.kelas}</td></tr>
-                    <tr><td>Semester</td><td>: ${appData.schoolProfile.semester}</td></tr>
-                    <tr><td>Tahun Pelajaran</td><td>: ${appData.schoolProfile.tahunAjaran}</td></tr>
+                    <tr><td>Wali Kelas</td><td>: ${currentUser.namaLengkap || currentUser.username}</td></tr>
+                    ${currentUser.nip ? `<tr><td>NIP</td><td>: ${currentUser.nip}</td></tr>` : ''}
                   </table>
                 </div>
               </div>
@@ -2197,7 +2162,7 @@
                   `).join('')}
                   <tr class="bg-gray-100 font-bold">
                     <td colspan="2" class="border border-black px-2 py-1 text-center">Rata-rata</td>
-                    <td class="border border-black px-2 py-1 text-center">${subjectGrades.length > 0 ? Math.round(subjectGrades.reduce((a,b) => a + b.nilai, 0) / subjectGrades.length) : 0}</td>
+                    <td class="border border-black px-2 py-1 text-center">${subjectGrades.length > 0 ? Math.round(subjectGrades.reduce((a, b) => a + b.nilai, 0) / subjectGrades.length) : 0}</td>
                     <td class="border border-black px-2 py-1"></td>
                   </tr>
                 </tbody>
@@ -2227,12 +2192,12 @@
               <!-- Special Events -->
               <h3 class="font-bold mb-2 text-sm">C. CATATAN KEJADIAN KHUSUS</h3>
               <div class="border border-black p-2 min-h-16 text-xs mb-4">
-                ${studentJournals.length > 0 ? 
-                  studentJournals.map(j => {
-                    const event = j.kejadianKhusus.find(k => k.siswa === student.nama);
-                    return event ? `<p>• ${j.tanggal} (${j.mapel}): ${event.kejadian}</p>` : '';
-                  }).join('') : 
-                  '<p class="text-gray-500 italic">Tidak ada catatan kejadian khusus</p>'}
+                ${studentJournals.length > 0 ?
+          studentJournals.map(j => {
+            const event = j.kejadianKhusus.find(k => k.siswa === student.nama);
+            return event ? `<p>• ${j.tanggal} (${j.mapel}): ${event.kejadian}</p>` : '';
+          }).join('') :
+          '<p class="text-gray-500 italic">Tidak ada catatan kejadian khusus</p>'}
               </div>
 
               <!-- Signature -->
@@ -2256,7 +2221,7 @@
         </div>
       `;
       document.body.appendChild(modal);
-      modal.onclick = (e) => { if(e.target === modal) modal.remove(); };
+      modal.onclick = (e) => { if (e.target === modal) modal.remove(); };
     }
 
     function getPredikat(nilai) {
@@ -2270,24 +2235,24 @@
     function countTotalStatus(student, status) {
       let totalCount = 0;
       const attendance = student.attendance || {};
-      
+
       Object.keys(attendance).forEach(monthKey => {
         const monthAttendance = attendance[monthKey];
         Object.values(monthAttendance).forEach(s => {
           if (s === status) totalCount++;
         });
       });
-      
+
       return totalCount;
     }
 
     function downloadReportPDF(studentId) {
       const student = appData.students.find(s => s.id === studentId);
       if (!student) return;
-      
+
       const reportContent = document.getElementById('report-content');
       if (!reportContent) return;
-      
+
       // Create a new window for printing
       const printWindow = window.open('', '_blank');
       printWindow.document.write(`
@@ -2305,13 +2270,10 @@
             .text-center { text-align: center; }
             .text-left { text-align: left; }
             .font-bold { font-weight: bold; }
-            .mb-1 { margin-bottom: 4px; }
             .mb-2 { margin-bottom: 8px; }
             .mb-4 { margin-bottom: 16px; }
             .mb-6 { margin-bottom: 24px; }
-            .mt-1 { margin-top: 4px; }
             .mt-8 { margin-top: 32px; }
-            .pb-3 { padding-bottom: 12px; }
             .pb-4 { padding-bottom: 16px; }
             .border-b-2 { border-bottom: 2px solid black; }
             .bg-gray-100 { background-color: #f3f4f6; }
@@ -2328,7 +2290,6 @@
             .w-40 { width: 160px; }
             .w-16 { width: 64px; }
             .h-16 { height: 64px; }
-            .h-32 { height: 128px; }
             .inline-block { display: inline-block; }
             .border-b { border-bottom: 1px solid black; }
             .italic { font-style: italic; }
@@ -2337,7 +2298,6 @@
             .text-sm { font-size: 10pt; }
             .text-lg { font-size: 14pt; }
             .text-xl { font-size: 16pt; }
-            .leading-snug { line-height: 1.3; }
           </style>
         </head>
         <body>
@@ -2349,20 +2309,38 @@
       setTimeout(() => {
         printWindow.print();
       }, 500);
-      
+
       showToast('Rapor siap diunduh!');
     }
 
     // ===================== INITIALIZATION =====================
     async function init() {
-      if (window.dataSdk) {
-        await window.dataSdk.init(dataHandler);
-      }
+      initDataListener();
       await initElementSdk();
       renderApp();
     }
 
+    // Expose functions to window for HTML event handlers
+    const exports = {
+      renderLoginPage, handleLogin, renderApp, navigateTo, handleLogout,
+      renderSidebarItem, renderCurrentPage, renderDashboard, renderProfile,
+      handleLogoUpload, handleTeacherPhotoUpload, updateSchoolProfile,
+      updateTeacherNamaLengkap, updateTeacherNIP, updateTeacherKelas,
+      renderStudents, changeAttendanceYear, changeAttendanceMonth, countStatus,
+      toggleAttendance, showAddStudentModal, showEditStudentModal, deleteStudent,
+      renderSubjects, showAddSubjectModal, addMateriInput, showEditSubjectModal,
+      addEditMateriInput, deleteSubject, showGradeInput, updateGrade,
+      renderJournal, showAddJournalModal, updateMateriOptions, addKejadianInput,
+      showEditJournalModal, updateEditMateriOptions, addEditKejadianInput, deleteJournal,
+      renderReport, generateReport, getPredikat, countTotalStatus, downloadReportPDF,
+      showToast, showModal, saveAppData
+    };
+
+    Object.assign(window, exports);
+
     init();
   </script>
- <script>(function(){function c(){var b=a.contentDocument||a.contentWindow.document;if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'9c03b740c7a60b95',t:'MTc2ODc5ODI3NS4wMDAwMDA='};var a=document.createElement('script');a.nonce='';a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
+  <script>(function () { function c() { var b = a.contentDocument || a.contentWindow.document; if (b) { var d = b.createElement('script'); d.innerHTML = "window.__CF$cv$params={r:'9beaacb3d6eab5ae',t:'MTc2ODUzNTY5OC4wMDAwMDA='};var a=document.createElement('script');a.nonce='';a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);"; b.getElementsByTagName('head')[0].appendChild(d) } } if (document.body) { var a = document.createElement('iframe'); a.height = 1; a.width = 1; a.style.position = 'absolute'; a.style.top = 0; a.style.left = 0; a.style.border = 'none'; a.style.visibility = 'hidden'; document.body.appendChild(a); if ('loading' !== document.readyState) c(); else if (window.addEventListener) document.addEventListener('DOMContentLoaded', c); else { var e = document.onreadystatechange || function () { }; document.onreadystatechange = function (b) { e(b); 'loading' !== document.readyState && (document.onreadystatechange = e, c()) } } } })();</script>
+</body>
+
 </html>
