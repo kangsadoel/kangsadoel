@@ -1,0 +1,2368 @@
+<!doctype html>
+<html lang="id" class="h-full">
+ <head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Teacher Workbook Alkaromah School</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="/_sdk/data_sdk.js"></script>
+  <script src="/_sdk/element_sdk.js"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&amp;display=swap" rel="stylesheet">
+  <style>
+    body {
+      box-sizing: border-box;
+      font-family: 'Poppins', sans-serif;
+    }
+    .sidebar-item:hover {
+      background: linear-gradient(90deg, rgba(59, 130, 246, 0.1) 0%, transparent 100%);
+    }
+    .sidebar-item.active {
+      background: linear-gradient(90deg, rgba(59, 130, 246, 0.2) 0%, transparent 100%);
+      border-left: 4px solid #3b82f6;
+    }
+    .card-hover:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 10px 40px rgba(0,0,0,0.1);
+    }
+    .gradient-bg {
+      background: linear-gradient(135deg, #1e3a5f 0%, #2d5a87 100%);
+    }
+    .stat-card {
+      background: linear-gradient(135deg, #ffffff 0%, #f8fafc 100%);
+    }
+    @media print {
+      .no-print { display: none !important; }
+      .print-only { display: block !important; }
+    }
+    .toast {
+      animation: slideIn 0.3s ease-out;
+    }
+    @keyframes slideIn {
+      from { transform: translateX(100%); opacity: 0; }
+      to { transform: translateX(0); opacity: 1; }
+    }
+    .modal-overlay {
+      background: rgba(0,0,0,0.5);
+      backdrop-filter: blur(4px);
+    }
+  </style>
+  <style>@view-transition { navigation: auto; }</style>
+ </head>
+ <body class="h-full bg-gray-50">
+  <div id="app" class="h-full overflow-auto"></div>
+  <script>
+    // ===================== APP STATE =====================
+    let currentUser = null;
+    let currentPage = 'dashboard';
+    let appData = {
+      schoolProfile: {
+        logo: '',
+        semester: 'Ganjil',
+        tahunAjaran: '2024/2025',
+        namaLembaga: 'Yayasan Pondok Pesantren Al-Hidayah Bani Sya\'roni',
+        namaSekolah: 'SDIT Al-Karomah',
+        alamat: 'Kp. Manapa Rt.001/004',
+        kelurahan: 'Karangtanjung',
+        kecamatan: 'Cililin',
+        kabupaten: 'Bandung Barat',
+        provinsi: 'Jawa Barat',
+        kodePos: '40562',
+        email: 'info@sdalkaromah.sch.id',
+        telepon: '021-12345678',
+        kepalaSekolah: 'H. Ahmad Fauzi, S.Pd., M.Pd.',
+        visi: 'Menjadi sekolah unggulan yang menghasilkan generasi berakhlak mulia, cerdas, dan berdaya saing global.',
+        misi: '1. Menyelenggarakan pendidikan berkualitas berbasis nilai-nilai Islam\n2. Mengembangkan potensi peserta didik secara optimal\n3. Menciptakan lingkungan belajar yang kondusif dan menyenangkan'
+      },
+      teachers: [
+        { username: 'Rd Citra', password: 'alkaromah', foto: '', kelas: 'Kelas 1A' },
+        { username: 'Neng Simatul Munawaro', password: 'alkaromah', foto: '', kelas: 'Kelas 1B' },
+        { username: 'Asep Nurdin', password: 'alkaromah', foto: '', kelas: 'Kelas 2A' },
+        { username: 'Syahdan Kamil', password: 'alkaromah', foto: '', kelas: 'Kelas 2B' },
+        { username: 'Nurfauziah', password: 'alkaromah', foto: '', kelas: 'Kelas 3A' },
+        { username: 'Risman Herdiansyah', password: 'alkaromah', foto: '', kelas: 'Kelas 3B' },
+        { username: 'Nuraeni', password: 'alkaromah', foto: '', kelas: 'Kelas 4A' },
+        { username: 'Iis', password: 'alkaromah', foto: '', kelas: 'Kelas 4B' },
+        { username: 'Latifah', password: 'alkaromah', foto: '', kelas: 'Kelas 5A' },
+        { username: 'Delia Maya', password: 'alkaromah', foto: '', kelas: 'Kelas 5B' },
+        { username: 'Cucu Hasanah', password: 'alkaromah', foto: '', kelas: 'Kelas 6A' },
+        { username: 'Imas Nurjanah', password: 'alkaromah', foto: '', kelas: 'Kelas 6B' }
+      ],
+      students: [],
+      subjects: [],
+      journals: [],
+      attendance: [],
+      grades: []
+    };
+
+    const defaultConfig = {
+      app_title: 'TEACHER WORKBOOK ALKAROMAH SCHOOL',
+      primary_color: '#1e3a5f',
+      secondary_color: '#3b82f6',
+      bg_color: '#f8fafc',
+      text_color: '#1e293b',
+      accent_color: '#10b981',
+      font_family: 'Poppins',
+      font_size: 14
+    };
+
+    let config = { ...defaultConfig };
+
+    // ===================== DATA SDK HANDLER =====================
+    let allRecords = [];
+    
+    const dataHandler = {
+      onDataChanged(data) {
+        if (data && data.length > 0) {
+          allRecords = data;
+          
+          if (currentUser) {
+            // Load data specific to this teacher
+            const teacherRecord = data.find(record => 
+              record.type === 'teacherData' && 
+              record.teacher === currentUser.username
+            );
+            
+            if (teacherRecord && teacherRecord.data) {
+              try {
+                const parsed = JSON.parse(teacherRecord.data);
+                // Merge teacher-specific data
+                appData.students = parsed.students || [];
+                appData.subjects = parsed.subjects || [];
+                appData.journals = parsed.journals || [];
+                appData.attendance = parsed.attendance || [];
+                appData.grades = parsed.grades || [];
+              } catch (e) {}
+            }
+            
+            // Load shared school profile (if exists)
+            const profileRecord = data.find(record => record.type === 'schoolProfile');
+            if (profileRecord && profileRecord.data) {
+              try {
+                const parsed = JSON.parse(profileRecord.data);
+                appData.schoolProfile = { ...appData.schoolProfile, ...parsed };
+              } catch (e) {}
+            }
+            
+            renderApp();
+          }
+        }
+      }
+    };
+
+    async function saveAppData() {
+      if (!currentUser) return;
+      
+      // Save teacher-specific data
+      const teacherDataRecord = allRecords.find(r => 
+        r.type === 'teacherData' && 
+        r.teacher === currentUser.username
+      );
+      
+      const teacherDataToSave = {
+        type: 'teacherData',
+        teacher: currentUser.username,
+        data: JSON.stringify({
+          students: appData.students,
+          subjects: appData.subjects,
+          journals: appData.journals,
+          attendance: appData.attendance,
+          grades: appData.grades
+        }),
+        updatedAt: new Date().toISOString()
+      };
+      
+      if (teacherDataRecord) {
+        teacherDataToSave.__backendId = teacherDataRecord.__backendId;
+        await window.dataSdk.update(teacherDataToSave);
+      } else {
+        teacherDataToSave.createdAt = new Date().toISOString();
+        await window.dataSdk.create(teacherDataToSave);
+      }
+      
+      // Save shared school profile
+      const profileRecord = allRecords.find(r => r.type === 'schoolProfile');
+      const profileDataToSave = {
+        type: 'schoolProfile',
+        data: JSON.stringify(appData.schoolProfile),
+        updatedAt: new Date().toISOString()
+      };
+      
+      if (profileRecord) {
+        profileDataToSave.__backendId = profileRecord.__backendId;
+        await window.dataSdk.update(profileDataToSave);
+      } else {
+        profileDataToSave.createdAt = new Date().toISOString();
+        await window.dataSdk.create(profileDataToSave);
+      }
+    }
+
+    // ===================== ELEMENT SDK =====================
+    async function initElementSdk() {
+      if (window.elementSdk) {
+        await window.elementSdk.init({
+          defaultConfig,
+          onConfigChange: async (newConfig) => {
+            config = { ...config, ...newConfig };
+            
+            // Apply font family
+            const customFont = config.font_family || defaultConfig.font_family;
+            const baseFontStack = 'Arial, sans-serif';
+            document.body.style.fontFamily = `${customFont}, ${baseFontStack}`;
+            
+            // Apply font size scaling
+            const baseSize = config.font_size || defaultConfig.font_size;
+            document.documentElement.style.fontSize = `${baseSize}px`;
+            
+            renderApp();
+          },
+          mapToCapabilities: (cfg) => ({
+            recolorables: [
+              { get: () => cfg.primary_color || defaultConfig.primary_color, set: (v) => { cfg.primary_color = v; window.elementSdk.setConfig({ primary_color: v }); } },
+              { get: () => cfg.secondary_color || defaultConfig.secondary_color, set: (v) => { cfg.secondary_color = v; window.elementSdk.setConfig({ secondary_color: v }); } },
+              { get: () => cfg.bg_color || defaultConfig.bg_color, set: (v) => { cfg.bg_color = v; window.elementSdk.setConfig({ bg_color: v }); } },
+              { get: () => cfg.text_color || defaultConfig.text_color, set: (v) => { cfg.text_color = v; window.elementSdk.setConfig({ text_color: v }); } },
+              { get: () => cfg.accent_color || defaultConfig.accent_color, set: (v) => { cfg.accent_color = v; window.elementSdk.setConfig({ accent_color: v }); } }
+            ],
+            borderables: [],
+            fontEditable: {
+              get: () => cfg.font_family || defaultConfig.font_family,
+              set: (v) => { cfg.font_family = v; window.elementSdk.setConfig({ font_family: v }); }
+            },
+            fontSizeable: {
+              get: () => cfg.font_size || defaultConfig.font_size,
+              set: (v) => { cfg.font_size = v; window.elementSdk.setConfig({ font_size: v }); }
+            }
+          }),
+          mapToEditPanelValues: (cfg) => new Map([
+            ['app_title', cfg.app_title || defaultConfig.app_title],
+            ['school_name', appData.schoolProfile.namaSekolah],
+            ['school_foundation', appData.schoolProfile.namaLembaga],
+            ['school_phone', appData.schoolProfile.telepon],
+            ['school_email', appData.schoolProfile.email]
+          ])
+        });
+        config = { ...defaultConfig, ...window.elementSdk.config };
+      }
+    }
+
+    // ===================== TOAST NOTIFICATION =====================
+    function showToast(message, type = 'success') {
+      const toastContainer = document.getElementById('toast-container') || createToastContainer();
+      const toast = document.createElement('div');
+      toast.className = `toast p-4 rounded-lg shadow-lg mb-2 flex items-center gap-2 ${type === 'success' ? 'bg-green-500' : type === 'error' ? 'bg-red-500' : 'bg-blue-500'} text-white`;
+      toast.innerHTML = `
+        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          ${type === 'success' ? '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>' : '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>'}
+        </svg>
+        <span>${message}</span>
+      `;
+      toastContainer.appendChild(toast);
+      setTimeout(() => toast.remove(), 3000);
+    }
+
+    function createToastContainer() {
+      const container = document.createElement('div');
+      container.id = 'toast-container';
+      container.className = 'fixed top-4 right-4 z-50';
+      document.body.appendChild(container);
+      return container;
+    }
+
+    // ===================== MODAL HELPER =====================
+    function showModal(title, content, onConfirm, onCancel) {
+      const modal = document.createElement('div');
+      modal.className = 'fixed inset-0 modal-overlay flex items-center justify-center z-50';
+      modal.innerHTML = `
+        <div class="bg-white rounded-xl p-6 max-w-md w-full mx-4 shadow-2xl">
+          <h3 class="text-xl font-semibold mb-4" style="color: ${config.primary_color}">${title}</h3>
+          <p class="text-gray-600 mb-6">${content}</p>
+          <div class="flex gap-3 justify-end">
+            <button class="cancel-btn px-4 py-2 rounded-lg border border-gray-300 hover:bg-gray-50 transition">Batal</button>
+            <button class="confirm-btn px-4 py-2 rounded-lg text-white transition" style="background: ${config.primary_color}">Konfirmasi</button>
+          </div>
+        </div>
+      `;
+      document.body.appendChild(modal);
+      modal.querySelector('.cancel-btn').onclick = () => { modal.remove(); if(onCancel) onCancel(); };
+      modal.querySelector('.confirm-btn').onclick = () => { modal.remove(); if(onConfirm) onConfirm(); };
+      modal.onclick = (e) => { if(e.target === modal) modal.remove(); };
+    }
+
+    // ===================== LOGIN PAGE =====================
+    function renderLoginPage() {
+      const app = document.getElementById('app');
+      app.innerHTML = `
+        <div class="min-h-full flex items-center justify-center p-4" style="background: linear-gradient(135deg, ${config.primary_color} 0%, ${config.secondary_color} 100%);">
+          <div class="bg-white rounded-2xl shadow-2xl p-8 w-full max-w-md">
+            <div class="text-center mb-8">
+              <div class="w-24 h-24 mx-auto mb-4 rounded-full flex items-center justify-center" style="background: linear-gradient(135deg, ${config.primary_color} 0%, ${config.secondary_color} 100%);">
+                <svg class="w-12 h-12 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"/>
+                </svg>
+              </div>
+              <h1 class="text-2xl font-bold" style="color: ${config.primary_color}">${config.app_title}</h1>
+              <p class="text-gray-500 mt-2">Silakan masuk untuk melanjutkan</p>
+            </div>
+            <div class="space-y-4">
+              <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">Nama Guru</label>
+                <input type="text" id="login-username" placeholder="Masukkan nama guru" class="w-full px-4 py-3 rounded-lg border border-gray-300 focus:ring-2 focus:border-transparent transition">
+              </div>
+              <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">Password</label>
+                <input type="password" id="login-password" placeholder="Masukkan password" class="w-full px-4 py-3 rounded-lg border border-gray-300 focus:ring-2 focus:border-transparent transition">
+              </div>
+              <div id="login-error" class="text-red-500 text-sm hidden"></div>
+              <button onclick="handleLogin()" class="w-full py-3 rounded-lg text-white font-semibold transition hover:opacity-90" style="background: linear-gradient(135deg, ${config.primary_color} 0%, ${config.secondary_color} 100%);">
+                Masuk
+              </button>
+            </div>
+          </div>
+        </div>
+      `;
+    }
+
+    function handleLogin() {
+      const username = document.getElementById('login-username').value;
+      const password = document.getElementById('login-password').value;
+      const errorEl = document.getElementById('login-error');
+      
+      const teacher = appData.teachers.find(t => t.username === username && t.password === password);
+      if (teacher) {
+        currentUser = teacher;
+        currentPage = 'dashboard';
+        renderApp();
+        showToast('Selamat datang, ' + teacher.username + '!');
+      } else {
+        errorEl.textContent = 'Username atau password salah!';
+        errorEl.classList.remove('hidden');
+      }
+    }
+
+    // ===================== MAIN APP LAYOUT =====================
+    function renderApp() {
+      if (!currentUser) {
+        renderLoginPage();
+        return;
+      }
+
+      const app = document.getElementById('app');
+      app.innerHTML = `
+        <div class="flex h-full">
+          <!-- Sidebar -->
+          <aside class="w-64 min-h-full shadow-xl flex-shrink-0 no-print" style="background: ${config.primary_color}">
+            <div class="p-4">
+              <div class="flex items-center gap-3 mb-6">
+                <div class="w-12 h-12 rounded-full bg-white/20 flex items-center justify-center">
+                  ${appData.schoolProfile.logo ? `<img src="${appData.schoolProfile.logo}" class="w-10 h-10 rounded-full object-cover" loading="lazy" onerror="this.src=''; this.parentElement.innerHTML='<svg class=\\'w-6 h-6 text-white\\' fill=\\'none\\' stroke=\\'currentColor\\' viewBox=\\'0 0 24 24\\'><path stroke-linecap=\\'round\\' stroke-linejoin=\\'round\\' stroke-width=\\'2\\' d=\\'M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4\\'/></svg>';">` : 
+                  `<svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"/></svg>`}
+                </div>
+                <div class="text-white">
+                  <h2 class="font-bold text-sm leading-tight">${appData.schoolProfile.namaSekolah}</h2>
+                  <p class="text-xs text-white/70">${appData.schoolProfile.semester} ${appData.schoolProfile.tahunAjaran}</p>
+                </div>
+              </div>
+              <div class="bg-white/10 rounded-lg p-3 mb-6">
+                <div class="flex items-center gap-3">
+                  <div class="w-10 h-10 rounded-full bg-white/20 flex items-center justify-center overflow-hidden">
+                    ${currentUser.foto ? `<img src="${currentUser.foto}" class="w-full h-full object-cover" loading="lazy" onerror="this.src=''; this.parentElement.innerHTML='<span class=\\'text-white font-bold\\'>${currentUser.username.charAt(0)}</span>';">` : 
+                    `<span class="text-white font-bold">${currentUser.username.charAt(0)}</span>`}
+                  </div>
+                  <div class="text-white flex-1">
+                    <p class="font-medium text-sm">${currentUser.username}</p>
+                    <p class="text-xs text-white/70">${currentUser.kelas}</p>
+                  </div>
+                </div>
+              </div>
+              <nav class="space-y-1">
+                ${renderSidebarItem('dashboard', 'Dashboard', '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"/>')}
+                ${renderSidebarItem('profile', 'Profil Sistem', '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>')}
+                ${renderSidebarItem('students', 'Data Siswa & Presensi', '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z"/>')}
+                ${renderSidebarItem('subjects', 'Mata Pelajaran & Nilai', '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01"/>')}
+                ${renderSidebarItem('journal', 'Jurnal Harian', '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/>')}
+                ${renderSidebarItem('report', 'Cetak Rapor', '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"/>')}
+              </nav>
+            </div>
+            <div class="absolute bottom-4 left-4 right-4">
+              <button onclick="handleLogout()" class="w-full py-2 px-4 bg-white/10 hover:bg-white/20 text-white rounded-lg transition flex items-center justify-center gap-2">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"/></svg>
+                Keluar
+              </button>
+            </div>
+          </aside>
+          
+          <!-- Main Content -->
+          <main class="flex-1 overflow-auto" style="background: ${config.bg_color}">
+            <div id="main-content" class="p-6">
+              ${renderCurrentPage()}
+            </div>
+          </main>
+        </div>
+      `;
+    }
+
+    function renderSidebarItem(page, label, iconPath) {
+      const isActive = currentPage === page;
+      return `
+        <button onclick="navigateTo('${page}')" class="sidebar-item w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-white/80 hover:text-white transition ${isActive ? 'active' : ''}">
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">${iconPath}</svg>
+          <span class="text-sm">${label}</span>
+        </button>
+      `;
+    }
+
+    function navigateTo(page) {
+      currentPage = page;
+      document.getElementById('main-content').innerHTML = renderCurrentPage();
+    }
+
+    function handleLogout() {
+      showModal('Konfirmasi Keluar', 'Apakah Anda yakin ingin keluar dari aplikasi?', () => {
+        currentUser = null;
+        currentPage = 'dashboard';
+        renderApp();
+        showToast('Anda telah keluar', 'info');
+      });
+    }
+
+    function renderCurrentPage() {
+      switch(currentPage) {
+        case 'dashboard': return renderDashboard();
+        case 'profile': return renderProfile();
+        case 'students': return renderStudents();
+        case 'subjects': return renderSubjects();
+        case 'journal': return renderJournal();
+        case 'report': return renderReport();
+        default: return renderDashboard();
+      }
+    }
+
+    // ===================== DASHBOARD =====================
+    function renderDashboard() {
+      const myStudents = appData.students.filter(s => s.kelas === currentUser.kelas);
+      const mySubjects = appData.subjects.filter(s => s.kelas === currentUser.kelas);
+      const recentJournals = appData.journals.filter(j => j.teacher === currentUser.username).slice(-5).reverse();
+      
+      const totalAttendance = myStudents.length > 0 ? 
+        Math.round(myStudents.reduce((acc, s) => acc + (s.attendanceRate || 85), 0) / myStudents.length) : 0;
+
+      return `
+        <div class="space-y-6">
+          <div class="flex items-center justify-between">
+            <div>
+              <h1 class="text-2xl font-bold" style="color: ${config.text_color}">Dashboard</h1>
+              <p class="text-gray-500">Selamat datang kembali, ${currentUser.username}!</p>
+            </div>
+            <div class="text-right">
+              <p class="text-sm text-gray-500">${new Date().toLocaleDateString('id-ID', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}</p>
+            </div>
+          </div>
+
+          <!-- Statistics Cards -->
+          <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+            <div class="stat-card rounded-xl p-5 shadow-sm card-hover transition-all border border-gray-100">
+              <div class="flex items-center gap-4">
+                <div class="w-12 h-12 rounded-xl flex items-center justify-center" style="background: ${config.secondary_color}20">
+                  <svg class="w-6 h-6" style="color: ${config.secondary_color}" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z"/></svg>
+                </div>
+                <div>
+                  <p class="text-sm text-gray-500">Jumlah Siswa</p>
+                  <p class="text-2xl font-bold" style="color: ${config.text_color}">${myStudents.length}</p>
+                </div>
+              </div>
+            </div>
+            <div class="stat-card rounded-xl p-5 shadow-sm card-hover transition-all border border-gray-100">
+              <div class="flex items-center gap-4">
+                <div class="w-12 h-12 rounded-xl flex items-center justify-center" style="background: ${config.accent_color}20">
+                  <svg class="w-6 h-6" style="color: ${config.accent_color}" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"/></svg>
+                </div>
+                <div>
+                  <p class="text-sm text-gray-500">Kelas Diampu</p>
+                  <p class="text-2xl font-bold" style="color: ${config.text_color}">${currentUser.kelas}</p>
+                </div>
+              </div>
+            </div>
+            <div class="stat-card rounded-xl p-5 shadow-sm card-hover transition-all border border-gray-100">
+              <div class="flex items-center gap-4">
+                <div class="w-12 h-12 rounded-xl flex items-center justify-center" style="background: #f59e0b20">
+                  <svg class="w-6 h-6 text-amber-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"/></svg>
+                </div>
+                <div>
+                  <p class="text-sm text-gray-500">Mata Pelajaran</p>
+                  <p class="text-2xl font-bold" style="color: ${config.text_color}">${mySubjects.length}</p>
+                </div>
+              </div>
+            </div>
+            <div class="stat-card rounded-xl p-5 shadow-sm card-hover transition-all border border-gray-100">
+              <div class="flex items-center gap-4">
+                <div class="w-12 h-12 rounded-xl flex items-center justify-center" style="background: #8b5cf620">
+                  <svg class="w-6 h-6 text-purple-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                </div>
+                <div>
+                  <p class="text-sm text-gray-500">Rata-rata Kehadiran</p>
+                  <p class="text-2xl font-bold" style="color: ${config.text_color}">${totalAttendance}%</p>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            <!-- Academic Stats -->
+            <div class="lg:col-span-2 bg-white rounded-xl shadow-sm p-6 border border-gray-100">
+              <h3 class="font-semibold mb-4" style="color: ${config.text_color}">Statistik Akademik</h3>
+              <div class="grid grid-cols-3 gap-4">
+                <div class="text-center p-4 rounded-lg" style="background: ${config.secondary_color}10">
+                  <p class="text-3xl font-bold" style="color: ${config.secondary_color}">${myStudents.length > 0 ? Math.round(myStudents.reduce((a,s) => a + (s.avgGrade || 75), 0) / myStudents.length) : 0}</p>
+                  <p class="text-sm text-gray-500 mt-1">Rata-rata Nilai</p>
+                </div>
+                <div class="text-center p-4 rounded-lg" style="background: ${config.accent_color}10">
+                  <p class="text-3xl font-bold" style="color: ${config.accent_color}">${myStudents.filter(s => (s.avgGrade || 75) >= 75).length}</p>
+                  <p class="text-sm text-gray-500 mt-1">Siswa Tuntas</p>
+                </div>
+                <div class="text-center p-4 rounded-lg bg-amber-50">
+                  <p class="text-3xl font-bold text-amber-500">${myStudents.filter(s => (s.avgGrade || 75) < 75).length}</p>
+                  <p class="text-sm text-gray-500 mt-1">Perlu Bimbingan</p>
+                </div>
+              </div>
+            </div>
+
+            <!-- Recent Events -->
+            <div class="bg-white rounded-xl shadow-sm p-6 border border-gray-100">
+              <h3 class="font-semibold mb-4" style="color: ${config.text_color}">Kejadian Terbaru</h3>
+              <div class="space-y-3">
+                ${recentJournals.length > 0 ? recentJournals.map(j => `
+                  <div class="flex items-start gap-3 p-3 rounded-lg bg-gray-50">
+                    <div class="w-2 h-2 rounded-full mt-2" style="background: ${config.secondary_color}"></div>
+                    <div class="flex-1">
+                      <p class="text-sm font-medium" style="color: ${config.text_color}">${j.mapel}</p>
+                      <p class="text-xs text-gray-500">${j.tanggal} - ${j.kejadian || 'Tidak ada kejadian khusus'}</p>
+                    </div>
+                  </div>
+                `).join('') : '<p class="text-sm text-gray-500 text-center py-4">Belum ada jurnal</p>'}
+              </div>
+            </div>
+          </div>
+
+          <!-- Vision & Mission -->
+          <div class="bg-white rounded-xl shadow-sm p-6 border border-gray-100">
+            <div class="flex items-center gap-4 mb-4">
+              ${appData.schoolProfile.logo ? `<img src="${appData.schoolProfile.logo}" class="w-16 h-16 rounded-full object-cover border-2" style="border-color: ${config.primary_color}" loading="lazy" onerror="this.style.display='none'">` : ''}
+              <div>
+                <h3 class="font-semibold" style="color: ${config.text_color}">${appData.schoolProfile.namaSekolah}</h3>
+                <p class="text-sm text-gray-500">${appData.schoolProfile.namaLembaga}</p>
+              </div>
+            </div>
+            <div class="grid md:grid-cols-2 gap-6">
+              <div>
+                <h4 class="font-medium mb-2" style="color: ${config.primary_color}">Visi</h4>
+                <p class="text-sm text-gray-600">${appData.schoolProfile.visi}</p>
+              </div>
+              <div>
+                <h4 class="font-medium mb-2" style="color: ${config.primary_color}">Misi</h4>
+                <p class="text-sm text-gray-600 whitespace-pre-line">${appData.schoolProfile.misi}</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      `;
+    }
+
+    // ===================== PROFILE SYSTEM =====================
+    function renderProfile() {
+      return `
+        <div class="space-y-6">
+          <h1 class="text-2xl font-bold" style="color: ${config.text_color}">Profil Sistem</h1>
+          
+          <div class="grid lg:grid-cols-2 gap-6">
+            <!-- School Profile -->
+            <div class="bg-white rounded-xl shadow-sm p-6 border border-gray-100">
+              <h3 class="font-semibold mb-4" style="color: ${config.text_color}">Identitas Sekolah</h3>
+              <div class="space-y-4">
+                <div class="flex items-center gap-4">
+                  <div class="w-20 h-20 rounded-full border-2 border-dashed border-gray-300 flex items-center justify-center overflow-hidden bg-gray-50" id="logo-preview">
+                    ${appData.schoolProfile.logo ? 
+                      `<img src="${appData.schoolProfile.logo}" class="w-full h-full object-cover" loading="lazy" onerror="this.src=''; this.parentElement.innerHTML='<svg class=\\'w-8 h-8 text-gray-400\\' fill=\\'none\\' stroke=\\'currentColor\\' viewBox=\\'0 0 24 24\\'><path stroke-linecap=\\'round\\' stroke-linejoin=\\'round\\' stroke-width=\\'2\\' d=\\'M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z\\'/></svg>';">` : 
+                      `<svg class="w-8 h-8 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>`}
+                  </div>
+                  <div>
+                    <label class="block text-sm text-gray-600 mb-1">Logo Sekolah</label>
+                    <input type="file" accept="image/*" id="logo-upload-input" onchange="handleLogoUpload(event)" class="text-sm">
+                  </div>
+                </div>
+                <div class="grid grid-cols-2 gap-4">
+                  <div>
+                    <label class="block text-sm text-gray-600 mb-1">Semester</label>
+                    <select id="profile-semester" class="w-full px-3 py-2 border rounded-lg" onchange="updateSchoolProfile('semester', this.value)">
+                      <option value="Ganjil" ${appData.schoolProfile.semester === 'Ganjil' ? 'selected' : ''}>Ganjil</option>
+                      <option value="Genap" ${appData.schoolProfile.semester === 'Genap' ? 'selected' : ''}>Genap</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label class="block text-sm text-gray-600 mb-1">Tahun Ajaran</label>
+                    <input type="text" id="profile-tahun" value="${appData.schoolProfile.tahunAjaran}" class="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:border-blue-400" placeholder="contoh: 2024/2025" onchange="updateSchoolProfile('tahunAjaran', this.value)">
+                  </div>
+                </div>
+                <div>
+                  <label class="block text-sm text-gray-600 mb-1">Nama Lembaga</label>
+                  <input type="text" value="${appData.schoolProfile.namaLembaga}" class="w-full px-3 py-2 border rounded-lg" onchange="updateSchoolProfile('namaLembaga', this.value)">
+                </div>
+                <div>
+                  <label class="block text-sm text-gray-600 mb-1">Nama Sekolah</label>
+                  <input type="text" value="${appData.schoolProfile.namaSekolah}" class="w-full px-3 py-2 border rounded-lg" onchange="updateSchoolProfile('namaSekolah', this.value)">
+                </div>
+                <div>
+                  <label class="block text-sm text-gray-600 mb-1">Alamat</label>
+                  <input type="text" value="${appData.schoolProfile.alamat}" class="w-full px-3 py-2 border rounded-lg" onchange="updateSchoolProfile('alamat', this.value)">
+                </div>
+                <div class="grid grid-cols-2 gap-4">
+                  <div>
+                    <label class="block text-sm text-gray-600 mb-1">Kelurahan</label>
+                    <input type="text" value="${appData.schoolProfile.kelurahan}" class="w-full px-3 py-2 border rounded-lg" onchange="updateSchoolProfile('kelurahan', this.value)">
+                  </div>
+                  <div>
+                    <label class="block text-sm text-gray-600 mb-1">Kecamatan</label>
+                    <input type="text" value="${appData.schoolProfile.kecamatan}" class="w-full px-3 py-2 border rounded-lg" onchange="updateSchoolProfile('kecamatan', this.value)">
+                  </div>
+                </div>
+                <div class="grid grid-cols-2 gap-4">
+                  <div>
+                    <label class="block text-sm text-gray-600 mb-1">Kabupaten/Kota</label>
+                    <input type="text" value="${appData.schoolProfile.kabupaten}" class="w-full px-3 py-2 border rounded-lg" onchange="updateSchoolProfile('kabupaten', this.value)">
+                  </div>
+                  <div>
+                    <label class="block text-sm text-gray-600 mb-1">Provinsi</label>
+                    <input type="text" value="${appData.schoolProfile.provinsi}" class="w-full px-3 py-2 border rounded-lg" onchange="updateSchoolProfile('provinsi', this.value)">
+                  </div>
+                </div>
+                <div class="grid grid-cols-2 gap-4">
+                  <div>
+                    <label class="block text-sm text-gray-600 mb-1">Kode Pos</label>
+                    <input type="text" value="${appData.schoolProfile.kodePos}" class="w-full px-3 py-2 border rounded-lg" onchange="updateSchoolProfile('kodePos', this.value)">
+                  </div>
+                  <div>
+                    <label class="block text-sm text-gray-600 mb-1">No. Telepon</label>
+                    <input type="text" value="${appData.schoolProfile.telepon}" class="w-full px-3 py-2 border rounded-lg" onchange="updateSchoolProfile('telepon', this.value)">
+                  </div>
+                </div>
+                <div>
+                  <label class="block text-sm text-gray-600 mb-1">Email Sekolah</label>
+                  <input type="email" value="${appData.schoolProfile.email}" class="w-full px-3 py-2 border rounded-lg" onchange="updateSchoolProfile('email', this.value)">
+                </div>
+                <div>
+                  <label class="block text-sm text-gray-600 mb-1">Kepala Sekolah</label>
+                  <input type="text" value="${appData.schoolProfile.kepalaSekolah}" class="w-full px-3 py-2 border rounded-lg" onchange="updateSchoolProfile('kepalaSekolah', this.value)">
+                </div>
+              </div>
+            </div>
+
+            <!-- Vision Mission & Teacher Profile -->
+            <div class="space-y-6">
+              <div class="bg-white rounded-xl shadow-sm p-6 border border-gray-100">
+                <h3 class="font-semibold mb-4" style="color: ${config.text_color}">Visi & Misi</h3>
+                <div class="space-y-4">
+                  <div>
+                    <label class="block text-sm text-gray-600 mb-1">Visi</label>
+                    <textarea rows="3" class="w-full px-3 py-2 border rounded-lg resize-none" onchange="updateSchoolProfile('visi', this.value)">${appData.schoolProfile.visi}</textarea>
+                  </div>
+                  <div>
+                    <label class="block text-sm text-gray-600 mb-1">Misi</label>
+                    <textarea rows="4" class="w-full px-3 py-2 border rounded-lg resize-none" onchange="updateSchoolProfile('misi', this.value)">${appData.schoolProfile.misi}</textarea>
+                  </div>
+                </div>
+              </div>
+
+              <div class="bg-white rounded-xl shadow-sm p-6 border border-gray-100">
+                <h3 class="font-semibold mb-4" style="color: ${config.text_color}">Profil Wali Kelas</h3>
+                <div class="flex items-center gap-4 mb-4">
+                  <div class="w-20 h-20 rounded-full border-2 border-dashed border-gray-300 flex items-center justify-center overflow-hidden bg-gray-50">
+                    ${currentUser.foto ? 
+                      `<img src="${currentUser.foto}" class="w-full h-full object-cover" loading="lazy" onerror="this.src=''; this.parentElement.innerHTML='<span class=\\'text-2xl font-bold text-gray-400\\'>${currentUser.username.charAt(0)}</span>';">` : 
+                      `<span class="text-2xl font-bold text-gray-400">${currentUser.username.charAt(0)}</span>`}
+                  </div>
+                  <div>
+                    <label class="block text-sm text-gray-600 mb-1">Foto Profil</label>
+                    <input type="file" accept="image/*" onchange="handleTeacherPhotoUpload(event)" class="text-sm">
+                  </div>
+                </div>
+                <div class="space-y-3">
+                  <div>
+                    <label class="block text-sm text-gray-600 mb-1">Nama Lengkap Wali Kelas</label>
+                    <input type="text" id="teacher-nama-lengkap" value="${currentUser.namaLengkap || currentUser.username}" class="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:border-blue-400" onchange="updateTeacherNamaLengkap(this.value)">
+                  </div>
+                  <div>
+                    <label class="block text-sm text-gray-600 mb-1">NIP</label>
+                    <input type="text" id="teacher-nip" value="${currentUser.nip || ''}" class="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:border-blue-400" placeholder="Masukkan NIP" onchange="updateTeacherNIP(this.value)">
+                  </div>
+                  <div>
+                    <label class="block text-sm text-gray-600 mb-1">Kelas yang Diampu</label>
+                    <input type="text" id="teacher-kelas" value="${currentUser.kelas}" class="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:border-blue-400" onchange="updateTeacherKelas(this.value)">
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      `;
+    }
+
+    async function handleLogoUpload(event) {
+      const file = event.target.files[0];
+      if (file) {
+        const reader = new FileReader();
+        reader.onload = async function(e) {
+          appData.schoolProfile.logo = e.target.result;
+          await saveAppData();
+          navigateTo('profile');
+          showToast('Logo berhasil diupload!');
+        };
+        reader.readAsDataURL(file);
+      }
+    }
+
+    async function handleTeacherPhotoUpload(event) {
+      const file = event.target.files[0];
+      if (file) {
+        const reader = new FileReader();
+        reader.onload = async function(e) {
+          const teacherIdx = appData.teachers.findIndex(t => t.username === currentUser.username);
+          if (teacherIdx !== -1) {
+            appData.teachers[teacherIdx].foto = e.target.result;
+            currentUser.foto = e.target.result;
+            await saveAppData();
+            navigateTo('profile');
+            showToast('Foto profil berhasil diupload!');
+          }
+        };
+        reader.readAsDataURL(file);
+      }
+    }
+
+    async function updateSchoolProfile(field, value) {
+      appData.schoolProfile[field] = value;
+      await saveAppData();
+      showToast('Data berhasil disimpan!');
+    }
+
+    async function updateTeacherNamaLengkap(newNama) {
+      const teacherIdx = appData.teachers.findIndex(t => t.username === currentUser.username);
+      if (teacherIdx !== -1) {
+        appData.teachers[teacherIdx].namaLengkap = newNama;
+        currentUser.namaLengkap = newNama;
+        await saveAppData();
+        showToast('Nama lengkap berhasil diperbarui!');
+        renderApp();
+      }
+    }
+
+    async function updateTeacherNIP(newNIP) {
+      const teacherIdx = appData.teachers.findIndex(t => t.username === currentUser.username);
+      if (teacherIdx !== -1) {
+        appData.teachers[teacherIdx].nip = newNIP;
+        currentUser.nip = newNIP;
+        await saveAppData();
+        showToast('NIP berhasil diperbarui!');
+        renderApp();
+      }
+    }
+
+    async function updateTeacherKelas(newKelas) {
+      const teacherIdx = appData.teachers.findIndex(t => t.username === currentUser.username);
+      if (teacherIdx !== -1) {
+        appData.teachers[teacherIdx].kelas = newKelas;
+        currentUser.kelas = newKelas;
+        await saveAppData();
+        showToast('Kelas berhasil diperbarui!');
+        renderApp();
+      }
+    }
+
+    // ===================== STUDENTS & ATTENDANCE =====================
+    let selectedYear = new Date().getFullYear();
+    let selectedMonth = new Date().getMonth();
+
+    function renderStudents() {
+      const myStudents = appData.students.filter(s => s.kelas === currentUser.kelas);
+      const daysInMonth = new Date(selectedYear, selectedMonth + 1, 0).getDate();
+      
+      return `
+        <div class="space-y-6">
+          <div class="flex items-center justify-between">
+            <h1 class="text-2xl font-bold" style="color: ${config.text_color}">Data Siswa & Presensi</h1>
+            <button onclick="showAddStudentModal()" class="px-4 py-2 rounded-lg text-white flex items-center gap-2 transition hover:opacity-90" style="background: ${config.secondary_color}">
+              <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"/></svg>
+              Tambah Siswa
+            </button>
+          </div>
+
+          <!-- Students List -->
+          <div class="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
+            <div class="p-4 border-b bg-gray-50">
+              <h3 class="font-semibold" style="color: ${config.text_color}">Daftar Siswa ${currentUser.kelas}</h3>
+            </div>
+            <div class="overflow-x-auto">
+              <table class="w-full">
+                <thead class="bg-gray-50">
+                  <tr>
+                    <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">No</th>
+                    <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Foto</th>
+                    <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Nama Siswa</th>
+                    <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">NIS</th>
+                    <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">L/P</th>
+                    <th class="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase">Kehadiran</th>
+                    <th class="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase">Aksi</th>
+                  </tr>
+                </thead>
+                <tbody class="divide-y divide-gray-100">
+                  ${myStudents.length > 0 ? myStudents.map((s, i) => `
+                    <tr class="hover:bg-gray-50">
+                      <td class="px-4 py-3 text-sm">${i + 1}</td>
+                      <td class="px-4 py-3">
+                        <div class="w-10 h-10 rounded-full bg-gray-200 overflow-hidden">
+                          ${s.foto ? `<img src="${s.foto}" class="w-full h-full object-cover" loading="lazy" onerror="this.src=''; this.parentElement.innerHTML='<span class=\\'flex items-center justify-center h-full text-gray-500 font-medium\\'>${s.nama.charAt(0)}</span>';">` : 
+                          `<span class="flex items-center justify-center h-full text-gray-500 font-medium">${s.nama.charAt(0)}</span>`}
+                        </div>
+                      </td>
+                      <td class="px-4 py-3 text-sm font-medium" style="color: ${config.text_color}">${s.nama}</td>
+                      <td class="px-4 py-3 text-sm text-gray-500">${s.nis}</td>
+                      <td class="px-4 py-3 text-sm">${s.gender}</td>
+                      <td class="px-4 py-3 text-center">
+                        <span class="px-2 py-1 text-xs rounded-full ${(s.attendanceRate || 85) >= 80 ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}">${s.attendanceRate || 85}%</span>
+                      </td>
+                      <td class="px-4 py-3 text-center">
+                        <div class="flex items-center justify-center gap-2">
+                          <button onclick="showEditStudentModal('${s.id}')" class="p-1.5 rounded-lg hover:bg-gray-100 text-blue-500" title="Edit">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/></svg>
+                          </button>
+                          <button onclick="deleteStudent('${s.id}')" class="p-1.5 rounded-lg hover:bg-gray-100 text-red-500" title="Hapus">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  `).join('') : `
+                    <tr>
+                      <td colspan="7" class="px-4 py-8 text-center text-gray-500">Belum ada data siswa. Klik "Tambah Siswa" untuk menambahkan.</td>
+                    </tr>
+                  `}
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          <!-- Attendance Table -->
+          <div class="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
+            <div class="p-4 border-b bg-gray-50">
+              <div class="flex items-center justify-between mb-3">
+                <h3 class="font-semibold" style="color: ${config.text_color}">Presensi</h3>
+                <div class="flex items-center gap-4 text-sm">
+                  <span class="flex items-center gap-1"><span class="w-4 h-4 bg-green-500 rounded"></span> Hadir (H)</span>
+                  <span class="flex items-center gap-1"><span class="w-4 h-4 bg-yellow-500 rounded"></span> Izin (I)</span>
+                  <span class="flex items-center gap-1"><span class="w-4 h-4 bg-blue-500 rounded"></span> Sakit (S)</span>
+                  <span class="flex items-center gap-1"><span class="w-4 h-4 bg-red-500 rounded"></span> Alpha (A)</span>
+                </div>
+              </div>
+              <div class="flex items-center gap-3">
+                <div class="flex items-center gap-2">
+                  <label class="text-sm text-gray-600">Tahun:</label>
+                  <select onchange="changeAttendanceYear(this.value)" class="px-3 py-1.5 border rounded-lg text-sm">
+                    ${Array.from({length: 26}, (_, i) => 2025 + i).map(year => `<option value="${year}" ${year === selectedYear ? 'selected' : ''}>${year}</option>`).join('')}
+                  </select>
+                </div>
+                <div class="flex items-center gap-2">
+                  <label class="text-sm text-gray-600">Bulan:</label>
+                  <select onchange="changeAttendanceMonth(this.value)" class="px-3 py-1.5 border rounded-lg text-sm">
+                    ${['Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni', 'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'].map((m, i) => `<option value="${i}" ${i === selectedMonth ? 'selected' : ''}>${m}</option>`).join('')}
+                  </select>
+                </div>
+              </div>
+            </div>
+            <div class="overflow-x-auto">
+              <table class="w-full text-sm">
+                <thead class="bg-gray-50">
+                  <tr>
+                    <th class="px-3 py-2 text-left font-medium text-gray-500 sticky left-0 bg-gray-50">Nama</th>
+                    ${Array.from({length: Math.min(daysInMonth, 31)}, (_, i) => `<th class="px-2 py-2 text-center font-medium text-gray-500 min-w-[36px]">${i + 1}</th>`).join('')}
+                    <th class="px-3 py-2 text-center font-medium text-gray-500">%</th>
+                  </tr>
+                </thead>
+                <tbody class="divide-y divide-gray-100">
+                  ${myStudents.map(s => {
+                    const attendance = s.attendance || {};
+                    const monthKey = `${selectedYear}-${String(selectedMonth + 1).padStart(2, '0')}`;
+                    const monthAttendance = attendance[monthKey] || {};
+                    let hadirCount = 0;
+                    for (let d = 1; d <= daysInMonth; d++) {
+                      if (monthAttendance[d] === 'H') hadirCount++;
+                    }
+                    const percentage = Math.round((hadirCount / daysInMonth) * 100);
+                    
+                    return `
+                      <tr class="hover:bg-gray-50">
+                        <td class="px-3 py-2 font-medium sticky left-0 bg-white" style="color: ${config.text_color}">${s.nama}</td>
+                        ${Array.from({length: Math.min(daysInMonth, 31)}, (_, i) => {
+                          const day = i + 1;
+                          const status = monthAttendance[day] || '';
+                          const bgColor = status === 'H' ? 'bg-green-500' : status === 'I' ? 'bg-yellow-500' : status === 'S' ? 'bg-blue-500' : status === 'A' ? 'bg-red-500' : 'bg-gray-100';
+                          return `<td class="px-1 py-1 text-center"><button onclick="toggleAttendance('${s.id}', ${day})" class="w-7 h-7 rounded ${bgColor} text-white text-xs font-medium hover:opacity-80 transition">${status || '-'}</button></td>`;
+                        }).join('')}
+                        <td class="px-3 py-2 text-center font-medium ${percentage >= 80 ? 'text-green-600' : 'text-red-600'}">${percentage}%</td>
+                      </tr>
+                    `;
+                  }).join('')}
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          <!-- Monthly Recap -->
+          <div class="bg-white rounded-xl shadow-sm p-6 border border-gray-100">
+            <h3 class="font-semibold mb-4" style="color: ${config.text_color}">Rekap Kehadiran Bulanan</h3>
+            <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+              <div class="p-4 rounded-lg bg-green-50 text-center">
+                <p class="text-2xl font-bold text-green-600">${myStudents.reduce((acc, s) => acc + countStatus(s, 'H'), 0)}</p>
+                <p class="text-sm text-green-700">Total Hadir</p>
+              </div>
+              <div class="p-4 rounded-lg bg-yellow-50 text-center">
+                <p class="text-2xl font-bold text-yellow-600">${myStudents.reduce((acc, s) => acc + countStatus(s, 'I'), 0)}</p>
+                <p class="text-sm text-yellow-700">Total Izin</p>
+              </div>
+              <div class="p-4 rounded-lg bg-blue-50 text-center">
+                <p class="text-2xl font-bold text-blue-600">${myStudents.reduce((acc, s) => acc + countStatus(s, 'S'), 0)}</p>
+                <p class="text-sm text-blue-700">Total Sakit</p>
+              </div>
+              <div class="p-4 rounded-lg bg-red-50 text-center">
+                <p class="text-2xl font-bold text-red-600">${myStudents.reduce((acc, s) => acc + countStatus(s, 'A'), 0)}</p>
+                <p class="text-sm text-red-700">Total Alpha</p>
+              </div>
+            </div>
+            
+            <!-- Per Student Recap -->
+            <h4 class="font-medium mb-3" style="color: ${config.text_color}">Rekap Per Siswa</h4>
+            <div class="grid md:grid-cols-2 lg:grid-cols-3 gap-3">
+              ${myStudents.map(s => {
+                const hCount = countStatus(s, 'H');
+                const iCount = countStatus(s, 'I');
+                const sCount = countStatus(s, 'S');
+                const aCount = countStatus(s, 'A');
+                const total = daysInMonth;
+                const percentage = Math.round((hCount / total) * 100);
+                
+                return `
+                  <div class="border rounded-lg p-3 bg-gray-50">
+                    <div class="flex items-center gap-2 mb-2">
+                      <div class="w-8 h-8 rounded-full bg-gray-200 overflow-hidden flex-shrink-0">
+                        ${s.foto ? `<img src="${s.foto}" class="w-full h-full object-cover" loading="lazy" onerror="this.src=''; this.parentElement.innerHTML='<span class=\\'flex items-center justify-center h-full text-xs text-gray-500 font-medium\\'>${s.nama.charAt(0)}</span>';">` : 
+                        `<span class="flex items-center justify-center h-full text-xs text-gray-500 font-medium">${s.nama.charAt(0)}</span>`}
+                      </div>
+                      <div class="flex-1">
+                        <p class="text-sm font-medium" style="color: ${config.text_color}">${s.nama}</p>
+                        <p class="text-xs ${percentage >= 80 ? 'text-green-600' : 'text-red-600'} font-medium">${percentage}% Hadir</p>
+                      </div>
+                    </div>
+                    <div class="grid grid-cols-4 gap-1 text-xs text-center">
+                      <div class="bg-green-100 rounded py-1">
+                        <p class="font-bold text-green-700">${hCount}</p>
+                        <p class="text-green-600">H</p>
+                      </div>
+                      <div class="bg-yellow-100 rounded py-1">
+                        <p class="font-bold text-yellow-700">${iCount}</p>
+                        <p class="text-yellow-600">I</p>
+                      </div>
+                      <div class="bg-blue-100 rounded py-1">
+                        <p class="font-bold text-blue-700">${sCount}</p>
+                        <p class="text-blue-600">S</p>
+                      </div>
+                      <div class="bg-red-100 rounded py-1">
+                        <p class="font-bold text-red-700">${aCount}</p>
+                        <p class="text-red-600">A</p>
+                      </div>
+                    </div>
+                  </div>
+                `;
+              }).join('')}
+            </div>
+          </div>
+
+          <!-- Attendance Chart -->
+          <div class="bg-white rounded-xl shadow-sm p-6 border border-gray-100">
+            <h3 class="font-semibold mb-4" style="color: ${config.text_color}">Grafik Kehadiran</h3>
+            <div class="space-y-3">
+              ${myStudents.map(s => {
+                const hCount = countStatus(s, 'H');
+                const iCount = countStatus(s, 'I');
+                const sCount = countStatus(s, 'S');
+                const aCount = countStatus(s, 'A');
+                const total = hCount + iCount + sCount + aCount || 1;
+                const hPercent = Math.round((hCount / total) * 100);
+                const iPercent = Math.round((iCount / total) * 100);
+                const sPercent = Math.round((sCount / total) * 100);
+                const aPercent = Math.round((aCount / total) * 100);
+                
+                return `
+                  <div>
+                    <div class="flex items-center justify-between mb-1">
+                      <span class="text-sm font-medium" style="color: ${config.text_color}">${s.nama}</span>
+                      <span class="text-xs text-gray-500">${hPercent}% Hadir</span>
+                    </div>
+                    <div class="flex h-6 rounded-full overflow-hidden bg-gray-100">
+                      ${hPercent > 0 ? `<div class="bg-green-500" style="width: ${hPercent}%"></div>` : ''}
+                      ${iPercent > 0 ? `<div class="bg-yellow-500" style="width: ${iPercent}%"></div>` : ''}
+                      ${sPercent > 0 ? `<div class="bg-blue-500" style="width: ${sPercent}%"></div>` : ''}
+                      ${aPercent > 0 ? `<div class="bg-red-500" style="width: ${aPercent}%"></div>` : ''}
+                    </div>
+                  </div>
+                `;
+              }).join('')}
+            </div>
+          </div>
+        </div>
+      `;
+    }
+
+    function changeAttendanceYear(year) {
+      selectedYear = parseInt(year);
+      navigateTo('students');
+    }
+
+    function changeAttendanceMonth(month) {
+      selectedMonth = parseInt(month);
+      navigateTo('students');
+    }
+
+    function countStatus(student, status) {
+      const monthKey = `${selectedYear}-${String(selectedMonth + 1).padStart(2, '0')}`;
+      const monthAttendance = (student.attendance && student.attendance[monthKey]) || {};
+      return Object.values(monthAttendance).filter(s => s === status).length;
+    }
+
+    async function toggleAttendance(studentId, day) {
+      const studentIdx = appData.students.findIndex(s => s.id === studentId);
+      if (studentIdx === -1) return;
+      
+      const monthKey = `${selectedYear}-${String(selectedMonth + 1).padStart(2, '0')}`;
+      
+      if (!appData.students[studentIdx].attendance) {
+        appData.students[studentIdx].attendance = {};
+      }
+      if (!appData.students[studentIdx].attendance[monthKey]) {
+        appData.students[studentIdx].attendance[monthKey] = {};
+      }
+      
+      const currentStatus = appData.students[studentIdx].attendance[monthKey][day] || '';
+      const statuses = ['', 'H', 'I', 'S', 'A'];
+      const nextIdx = (statuses.indexOf(currentStatus) + 1) % statuses.length;
+      
+      if (statuses[nextIdx] === '') {
+        // Hapus entry jika kosong
+        delete appData.students[studentIdx].attendance[monthKey][day];
+      } else {
+        appData.students[studentIdx].attendance[monthKey][day] = statuses[nextIdx];
+      }
+      
+      // Update attendance rate (calculate from days that have been filled in only)
+      const attendance = appData.students[studentIdx].attendance;
+      let totalHadir = 0;
+      let totalDays = 0;
+      
+      Object.keys(attendance).forEach(monthKey => {
+        const monthAttendance = attendance[monthKey];
+        
+        Object.values(monthAttendance).forEach(status => {
+          if (status && status !== '') {
+            totalDays++;
+            if (status === 'H') totalHadir++;
+          }
+        });
+      });
+      
+      appData.students[studentIdx].attendanceRate = totalDays > 0 ? Math.round((totalHadir / totalDays) * 100) : 0;
+      
+      await saveAppData();
+      navigateTo('students');
+    }
+
+    function showAddStudentModal() {
+      const modal = document.createElement('div');
+      modal.className = 'fixed inset-0 modal-overlay flex items-center justify-center z-50';
+      modal.innerHTML = `
+        <div class="bg-white rounded-xl p-6 max-w-md w-full mx-4 shadow-2xl max-h-[90%] overflow-y-auto">
+          <h3 class="text-xl font-semibold mb-4" style="color: ${config.primary_color}">Tambah Siswa Baru</h3>
+          <div class="space-y-4">
+            <div class="flex justify-center">
+              <div class="w-24 h-24 rounded-full border-2 border-dashed border-gray-300 flex items-center justify-center overflow-hidden bg-gray-50" id="student-photo-preview">
+                <svg class="w-8 h-8 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/></svg>
+              </div>
+            </div>
+            <div>
+              <label class="block text-sm text-gray-600 mb-1">Foto Siswa</label>
+              <input type="file" accept="image/*" id="student-photo-input" class="w-full text-sm">
+            </div>
+            <div>
+              <label class="block text-sm text-gray-600 mb-1">Nama Lengkap</label>
+              <input type="text" id="student-nama" class="w-full px-3 py-2 border rounded-lg" placeholder="Masukkan nama siswa">
+            </div>
+            <div>
+              <label class="block text-sm text-gray-600 mb-1">NIS</label>
+              <input type="text" id="student-nis" class="w-full px-3 py-2 border rounded-lg" placeholder="Masukkan NIS">
+            </div>
+            <div>
+              <label class="block text-sm text-gray-600 mb-1">Jenis Kelamin</label>
+              <select id="student-gender" class="w-full px-3 py-2 border rounded-lg">
+                <option value="L">Laki-laki</option>
+                <option value="P">Perempuan</option>
+              </select>
+            </div>
+          </div>
+          <div class="flex gap-3 justify-end mt-6">
+            <button class="cancel-btn px-4 py-2 rounded-lg border border-gray-300 hover:bg-gray-50 transition">Batal</button>
+            <button class="save-btn px-4 py-2 rounded-lg text-white transition" style="background: ${config.primary_color}">Simpan</button>
+          </div>
+        </div>
+      `;
+      document.body.appendChild(modal);
+      
+      let photoData = '';
+      document.getElementById('student-photo-input').onchange = function(e) {
+        const file = e.target.files[0];
+        if (file) {
+          const reader = new FileReader();
+          reader.onload = function(ev) {
+            photoData = ev.target.result;
+            document.getElementById('student-photo-preview').innerHTML = `<img src="${photoData}" class="w-full h-full object-cover" loading="lazy">`;
+          };
+          reader.readAsDataURL(file);
+        }
+      };
+      
+      modal.querySelector('.cancel-btn').onclick = () => modal.remove();
+      modal.querySelector('.save-btn').onclick = async () => {
+        const nama = document.getElementById('student-nama').value.trim();
+        const nis = document.getElementById('student-nis').value.trim();
+        const gender = document.getElementById('student-gender').value;
+        
+        if (!nama || !nis) {
+          showToast('Mohon lengkapi semua data!', 'error');
+          return;
+        }
+        
+        const newStudent = {
+          id: Date.now().toString(),
+          nama,
+          nis,
+          gender,
+          foto: photoData,
+          kelas: currentUser.kelas,
+          attendance: {},
+          attendanceRate: 0,
+          avgGrade: 0
+        };
+        
+        appData.students.push(newStudent);
+        await saveAppData();
+        modal.remove();
+        navigateTo('students');
+        showToast('Siswa berhasil ditambahkan!');
+      };
+      modal.onclick = (e) => { if(e.target === modal) modal.remove(); };
+    }
+
+    function showEditStudentModal(studentId) {
+      const student = appData.students.find(s => s.id === studentId);
+      if (!student) return;
+      
+      const modal = document.createElement('div');
+      modal.className = 'fixed inset-0 modal-overlay flex items-center justify-center z-50';
+      modal.innerHTML = `
+        <div class="bg-white rounded-xl p-6 max-w-md w-full mx-4 shadow-2xl">
+          <h3 class="text-xl font-semibold mb-4" style="color: ${config.primary_color}">Edit Data Siswa</h3>
+          <div class="space-y-4">
+            <div class="flex justify-center">
+              <div class="w-24 h-24 rounded-full border-2 border-dashed border-gray-300 flex items-center justify-center overflow-hidden bg-gray-50" id="edit-student-photo-preview">
+                ${student.foto ? `<img src="${student.foto}" class="w-full h-full object-cover" loading="lazy">` : 
+                `<svg class="w-8 h-8 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/></svg>`}
+              </div>
+            </div>
+            <div>
+              <label class="block text-sm text-gray-600 mb-1">Foto Siswa</label>
+              <input type="file" accept="image/*" id="edit-student-photo-input" class="w-full text-sm">
+            </div>
+            <div>
+              <label class="block text-sm text-gray-600 mb-1">Nama Lengkap</label>
+              <input type="text" id="edit-student-nama" value="${student.nama}" class="w-full px-3 py-2 border rounded-lg">
+            </div>
+            <div>
+              <label class="block text-sm text-gray-600 mb-1">NIS</label>
+              <input type="text" id="edit-student-nis" value="${student.nis}" class="w-full px-3 py-2 border rounded-lg">
+            </div>
+            <div>
+              <label class="block text-sm text-gray-600 mb-1">Jenis Kelamin</label>
+              <select id="edit-student-gender" class="w-full px-3 py-2 border rounded-lg">
+                <option value="L" ${student.gender === 'L' ? 'selected' : ''}>Laki-laki</option>
+                <option value="P" ${student.gender === 'P' ? 'selected' : ''}>Perempuan</option>
+              </select>
+            </div>
+          </div>
+          <div class="flex gap-3 justify-end mt-6">
+            <button class="cancel-btn px-4 py-2 rounded-lg border border-gray-300 hover:bg-gray-50 transition">Batal</button>
+            <button class="save-btn px-4 py-2 rounded-lg text-white transition" style="background: ${config.primary_color}">Simpan</button>
+          </div>
+        </div>
+      `;
+      document.body.appendChild(modal);
+      
+      let photoData = student.foto;
+      document.getElementById('edit-student-photo-input').onchange = function(e) {
+        const file = e.target.files[0];
+        if (file) {
+          const reader = new FileReader();
+          reader.onload = function(ev) {
+            photoData = ev.target.result;
+            document.getElementById('edit-student-photo-preview').innerHTML = `<img src="${photoData}" class="w-full h-full object-cover" loading="lazy">`;
+          };
+          reader.readAsDataURL(file);
+        }
+      };
+      
+      modal.querySelector('.cancel-btn').onclick = () => modal.remove();
+      modal.querySelector('.save-btn').onclick = async () => {
+        const studentIdx = appData.students.findIndex(s => s.id === studentId);
+        if (studentIdx !== -1) {
+          appData.students[studentIdx].nama = document.getElementById('edit-student-nama').value.trim();
+          appData.students[studentIdx].nis = document.getElementById('edit-student-nis').value.trim();
+          appData.students[studentIdx].gender = document.getElementById('edit-student-gender').value;
+          appData.students[studentIdx].foto = photoData;
+          await saveAppData();
+          modal.remove();
+          navigateTo('students');
+          showToast('Data siswa berhasil diperbarui!');
+        }
+      };
+      modal.onclick = (e) => { if(e.target === modal) modal.remove(); };
+    }
+
+    async function deleteStudent(studentId) {
+      showModal('Hapus Siswa', 'Apakah Anda yakin ingin menghapus data siswa ini?', async () => {
+        appData.students = appData.students.filter(s => s.id !== studentId);
+        await saveAppData();
+        navigateTo('students');
+        showToast('Siswa berhasil dihapus!');
+      });
+    }
+
+    // ===================== SUBJECTS & GRADES =====================
+    function renderSubjects() {
+      const mySubjects = appData.subjects.filter(s => s.kelas === currentUser.kelas);
+      
+      return `
+        <div class="space-y-6">
+          <div class="flex items-center justify-between">
+            <h1 class="text-2xl font-bold" style="color: ${config.text_color}">Mata Pelajaran & Input Nilai</h1>
+            <button onclick="showAddSubjectModal()" class="px-4 py-2 rounded-lg text-white flex items-center gap-2 transition hover:opacity-90" style="background: ${config.secondary_color}">
+              <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"/></svg>
+              Tambah Mapel
+            </button>
+          </div>
+
+          <!-- Subjects List -->
+          <div class="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
+            ${mySubjects.length > 0 ? mySubjects.map(subj => `
+              <div class="bg-white rounded-xl shadow-sm p-5 border border-gray-100 card-hover transition-all">
+                <div class="flex items-start justify-between mb-3">
+                  <div class="w-12 h-12 rounded-xl flex items-center justify-center" style="background: ${config.secondary_color}20">
+                    <svg class="w-6 h-6" style="color: ${config.secondary_color}" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"/></svg>
+                  </div>
+                  <div class="flex gap-1">
+                    <button onclick="showEditSubjectModal('${subj.id}')" class="p-1.5 rounded-lg hover:bg-gray-100 text-blue-500"><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/></svg></button>
+                    <button onclick="deleteSubject('${subj.id}')" class="p-1.5 rounded-lg hover:bg-gray-100 text-red-500"><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg></button>
+                  </div>
+                </div>
+                <h4 class="font-semibold mb-1" style="color: ${config.text_color}">${subj.nama}</h4>
+                <p class="text-sm text-gray-500 mb-3">${subj.materi ? subj.materi.length : 0} Materi Ajar</p>
+                ${subj.materi && subj.materi.length > 0 ? `
+                  <div class="space-y-1 mb-3 max-h-24 overflow-y-auto">
+                    ${subj.materi.map((m, i) => `<p class="text-xs text-gray-600 truncate">• ${m}</p>`).join('')}
+                  </div>
+                ` : ''}
+                <button onclick="showGradeInput('${subj.id}')" class="w-full py-2 rounded-lg text-sm font-medium transition" style="background: ${config.primary_color}15; color: ${config.primary_color}">
+                  Input Nilai
+                </button>
+              </div>
+            `).join('') : `
+              <div class="col-span-full text-center py-12 bg-white rounded-xl border border-gray-100">
+                <svg class="w-12 h-12 mx-auto text-gray-300 mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"/></svg>
+                <p class="text-gray-500">Belum ada mata pelajaran</p>
+                <button onclick="showAddSubjectModal()" class="mt-3 px-4 py-2 rounded-lg text-sm" style="background: ${config.secondary_color}; color: white">Tambah Mapel Pertama</button>
+              </div>
+            `}
+          </div>
+        </div>
+      `;
+    }
+
+    function showAddSubjectModal() {
+      const modal = document.createElement('div');
+      modal.className = 'fixed inset-0 modal-overlay flex items-center justify-center z-50';
+      modal.innerHTML = `
+        <div class="bg-white rounded-xl p-6 max-w-md w-full mx-4 shadow-2xl max-h-[90%] overflow-y-auto">
+          <h3 class="text-xl font-semibold mb-4" style="color: ${config.primary_color}">Tambah Mata Pelajaran</h3>
+          <div class="space-y-4">
+            <div>
+              <label class="block text-sm text-gray-600 mb-1">Nama Mata Pelajaran</label>
+              <input type="text" id="subject-nama" class="w-full px-3 py-2 border rounded-lg" placeholder="contoh: Matematika">
+            </div>
+            <div>
+              <label class="block text-sm text-gray-600 mb-1">Materi Ajar</label>
+              <div id="materi-list" class="space-y-2 mb-2"></div>
+              <button type="button" onclick="addMateriInput()" class="text-sm px-3 py-1.5 rounded-lg border border-dashed border-gray-300 hover:border-gray-400 transition flex items-center gap-1">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"/></svg>
+                Tambah Materi
+              </button>
+            </div>
+          </div>
+          <div class="flex gap-3 justify-end mt-6">
+            <button class="cancel-btn px-4 py-2 rounded-lg border border-gray-300 hover:bg-gray-50 transition">Batal</button>
+            <button class="save-btn px-4 py-2 rounded-lg text-white transition" style="background: ${config.primary_color}">Simpan</button>
+          </div>
+        </div>
+      `;
+      document.body.appendChild(modal);
+      
+      modal.querySelector('.cancel-btn').onclick = () => modal.remove();
+      modal.querySelector('.save-btn').onclick = async () => {
+        const nama = document.getElementById('subject-nama').value.trim();
+        const materiInputs = document.querySelectorAll('.materi-input');
+        const materi = Array.from(materiInputs).map(input => input.value.trim()).filter(m => m);
+        
+        if (!nama) {
+          showToast('Mohon masukkan nama mata pelajaran!', 'error');
+          return;
+        }
+        
+        const newSubject = {
+          id: Date.now().toString(),
+          nama,
+          materi,
+          kelas: currentUser.kelas,
+          teacher: currentUser.username
+        };
+        
+        appData.subjects.push(newSubject);
+        await saveAppData();
+        modal.remove();
+        navigateTo('subjects');
+        showToast('Mata pelajaran berhasil ditambahkan!');
+      };
+      modal.onclick = (e) => { if(e.target === modal) modal.remove(); };
+    }
+
+    function addMateriInput() {
+      const list = document.getElementById('materi-list');
+      const div = document.createElement('div');
+      div.className = 'flex gap-2';
+      div.innerHTML = `
+        <input type="text" class="materi-input flex-1 px-3 py-2 border rounded-lg text-sm" placeholder="Nama materi">
+        <button type="button" onclick="this.parentElement.remove()" class="p-2 text-red-500 hover:bg-red-50 rounded-lg">
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+        </button>
+      `;
+      list.appendChild(div);
+    }
+
+    function showEditSubjectModal(subjectId) {
+      const subject = appData.subjects.find(s => s.id === subjectId);
+      if (!subject) return;
+      
+      const modal = document.createElement('div');
+      modal.className = 'fixed inset-0 modal-overlay flex items-center justify-center z-50';
+      modal.innerHTML = `
+        <div class="bg-white rounded-xl p-6 max-w-md w-full mx-4 shadow-2xl max-h-[90%] overflow-y-auto">
+          <h3 class="text-xl font-semibold mb-4" style="color: ${config.primary_color}">Edit Mata Pelajaran</h3>
+          <div class="space-y-4">
+            <div>
+              <label class="block text-sm text-gray-600 mb-1">Nama Mata Pelajaran</label>
+              <input type="text" id="edit-subject-nama" value="${subject.nama}" class="w-full px-3 py-2 border rounded-lg">
+            </div>
+            <div>
+              <label class="block text-sm text-gray-600 mb-1">Materi Ajar</label>
+              <div id="edit-materi-list" class="space-y-2 mb-2">
+                ${(subject.materi || []).map(m => `
+                  <div class="flex gap-2">
+                    <input type="text" class="edit-materi-input flex-1 px-3 py-2 border rounded-lg text-sm" value="${m}">
+                    <button type="button" onclick="this.parentElement.remove()" class="p-2 text-red-500 hover:bg-red-50 rounded-lg">
+                      <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+                    </button>
+                  </div>
+                `).join('')}
+              </div>
+              <button type="button" onclick="addEditMateriInput()" class="text-sm px-3 py-1.5 rounded-lg border border-dashed border-gray-300 hover:border-gray-400 transition flex items-center gap-1">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"/></svg>
+                Tambah Materi
+              </button>
+            </div>
+          </div>
+          <div class="flex gap-3 justify-end mt-6">
+            <button class="cancel-btn px-4 py-2 rounded-lg border border-gray-300 hover:bg-gray-50 transition">Batal</button>
+            <button class="save-btn px-4 py-2 rounded-lg text-white transition" style="background: ${config.primary_color}">Simpan</button>
+          </div>
+        </div>
+      `;
+      document.body.appendChild(modal);
+      
+      modal.querySelector('.cancel-btn').onclick = () => modal.remove();
+      modal.querySelector('.save-btn').onclick = async () => {
+        const subjectIdx = appData.subjects.findIndex(s => s.id === subjectId);
+        if (subjectIdx !== -1) {
+          const materiInputs = document.querySelectorAll('.edit-materi-input');
+          appData.subjects[subjectIdx].nama = document.getElementById('edit-subject-nama').value.trim();
+          appData.subjects[subjectIdx].materi = Array.from(materiInputs).map(input => input.value.trim()).filter(m => m);
+          await saveAppData();
+          modal.remove();
+          navigateTo('subjects');
+          showToast('Mata pelajaran berhasil diperbarui!');
+        }
+      };
+      modal.onclick = (e) => { if(e.target === modal) modal.remove(); };
+    }
+
+    function addEditMateriInput() {
+      const list = document.getElementById('edit-materi-list');
+      const div = document.createElement('div');
+      div.className = 'flex gap-2';
+      div.innerHTML = `
+        <input type="text" class="edit-materi-input flex-1 px-3 py-2 border rounded-lg text-sm" placeholder="Nama materi">
+        <button type="button" onclick="this.parentElement.remove()" class="p-2 text-red-500 hover:bg-red-50 rounded-lg">
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+        </button>
+      `;
+      list.appendChild(div);
+    }
+
+    async function deleteSubject(subjectId) {
+      showModal('Hapus Mata Pelajaran', 'Apakah Anda yakin ingin menghapus mata pelajaran ini?', async () => {
+        appData.subjects = appData.subjects.filter(s => s.id !== subjectId);
+        await saveAppData();
+        navigateTo('subjects');
+        showToast('Mata pelajaran berhasil dihapus!');
+      });
+    }
+
+    function showGradeInput(subjectId) {
+      const subject = appData.subjects.find(s => s.id === subjectId);
+      const myStudents = appData.students.filter(s => s.kelas === currentUser.kelas);
+      if (!subject) return;
+      
+      // Get or initialize grades for this subject
+      let subjectGrades = appData.grades.find(g => g.subjectId === subjectId);
+      if (!subjectGrades) {
+        subjectGrades = { subjectId, studentGrades: {} };
+        appData.grades.push(subjectGrades);
+      }
+      
+      const modal = document.createElement('div');
+      modal.className = 'fixed inset-0 modal-overlay flex items-center justify-center z-50';
+      modal.innerHTML = `
+        <div class="bg-white rounded-xl p-6 max-w-[95vw] w-full mx-4 shadow-2xl max-h-[95%] overflow-hidden flex flex-col">
+          <div class="flex items-center justify-between mb-4">
+            <h3 class="text-xl font-semibold" style="color: ${config.primary_color}">Input Nilai - ${subject.nama}</h3>
+            <button onclick="this.closest('.modal-overlay').remove()" class="p-2 hover:bg-gray-100 rounded-lg">
+              <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+            </button>
+          </div>
+          <div class="overflow-auto flex-1">
+            <table class="w-full text-sm border-collapse">
+              <thead class="bg-gray-50 sticky top-0">
+                <tr>
+                  <th rowspan="3" class="border border-gray-300 px-3 py-2 text-left sticky left-0 bg-gray-50 z-10 min-w-[180px]">Nama Siswa</th>
+                  <th colspan="30" class="border border-gray-300 px-2 py-2 text-center bg-indigo-100 font-bold">FORMATIF</th>
+                  <th colspan="5" class="border border-gray-300 px-2 py-2 text-center bg-orange-100 font-bold">SUMATIF LINGKUP MATERI (SLM)</th>
+                  <th rowspan="3" class="border border-gray-300 px-2 py-2 text-center bg-red-100 font-bold min-w-[70px]">SUMATIF AKHIR SEMESTER (SAS)</th>
+                  <th rowspan="3" class="border border-gray-300 px-2 py-2 text-center bg-gray-200 font-bold min-w-[70px]">RATA-RATA</th>
+                </tr>
+                <tr>
+                  <th colspan="6" class="border border-gray-300 px-2 py-1 text-center bg-blue-50">LM1</th>
+                  <th colspan="6" class="border border-gray-300 px-2 py-1 text-center bg-green-50">LM2</th>
+                  <th colspan="6" class="border border-gray-300 px-2 py-1 text-center bg-yellow-50">LM3</th>
+                  <th colspan="6" class="border border-gray-300 px-2 py-1 text-center bg-purple-50">LM4</th>
+                  <th colspan="6" class="border border-gray-300 px-2 py-1 text-center bg-pink-50">LM5</th>
+                  <th class="border border-gray-300 px-2 py-1 text-center bg-orange-50">LM1</th>
+                  <th class="border border-gray-300 px-2 py-1 text-center bg-orange-50">LM2</th>
+                  <th class="border border-gray-300 px-2 py-1 text-center bg-orange-50">LM3</th>
+                  <th class="border border-gray-300 px-2 py-1 text-center bg-orange-50">LM4</th>
+                  <th class="border border-gray-300 px-2 py-1 text-center bg-orange-50">LM5</th>
+                </tr>
+                <tr>
+                  ${['LM1', 'LM2', 'LM3', 'LM4', 'LM5'].map((lm, lmIdx) => {
+                    const bgColors = ['bg-blue-50', 'bg-green-50', 'bg-yellow-50', 'bg-purple-50', 'bg-pink-50'];
+                    return Array.from({length: 5}, (_, i) => `<th class="border border-gray-300 px-1 py-1 text-center text-xs ${bgColors[lmIdx]} min-w-[60px]">TP${i+1}</th>`).join('') + 
+                      `<th class="border border-gray-300 px-1 py-1 text-center text-xs font-bold ${bgColors[lmIdx]} min-w-[60px]">Avg</th>`;
+                  }).join('')}
+                  ${Array.from({length: 5}, (_, i) => `<th class="border border-gray-300 px-1 py-1 text-center text-xs bg-orange-50 min-w-[60px]">SLM${i+1}</th>`).join('')}
+                </tr>
+              </thead>
+              <tbody>
+                ${myStudents.map(student => {
+                  const grades = subjectGrades.studentGrades[student.id] || {};
+                  return `
+                    <tr class="hover:bg-gray-50">
+                      <td class="border border-gray-300 px-3 py-2 font-medium sticky left-0 bg-white z-10">${student.nama}</td>
+                      ${['LM1', 'LM2', 'LM3', 'LM4', 'LM5'].map(lm => {
+                        const tpInputs = Array.from({length: 5}, (_, i) => `
+                          <td class="border border-gray-300 px-1 py-1">
+                            <input type="number" min="0" max="100" 
+                              class="w-full px-2 py-1 text-center text-xs border border-gray-200 rounded focus:border-blue-400 focus:outline-none grade-input" 
+                              data-student="${student.id}" data-type="${lm}_TP${i+1}" data-lm="${lm}"
+                              value="${grades[`${lm}_TP${i+1}`] || ''}"
+                              onchange="updateGrade('${subjectId}', '${student.id}', '${lm}_TP${i+1}', this.value)">
+                          </td>
+                        `).join('');
+                        
+                        const lmValues = Array.from({length: 5}, (_, i) => grades[`${lm}_TP${i+1}`]).filter(v => v !== null && v !== undefined && !isNaN(v));
+                        const lmAvg = lmValues.length > 0 ? Math.round(lmValues.reduce((a, b) => a + b, 0) / lmValues.length) : '-';
+                        
+                        return tpInputs + `<td class="border border-gray-300 px-2 py-1 text-center font-bold bg-gray-100 text-xs" id="avg-${lm}-${student.id}">${lmAvg}</td>`;
+                      }).join('')}
+                      ${Array.from({length: 5}, (_, i) => `
+                        <td class="border border-gray-300 px-1 py-1">
+                          <input type="number" min="0" max="100" 
+                            class="w-full px-2 py-1 text-center text-xs border border-gray-200 rounded focus:border-blue-400 focus:outline-none grade-input" 
+                            data-student="${student.id}" data-type="SLM${i+1}"
+                            value="${grades[`SLM${i+1}`] || ''}"
+                            onchange="updateGrade('${subjectId}', '${student.id}', 'SLM${i+1}', this.value)">
+                        </td>
+                      `).join('')}
+                      <td class="border border-gray-300 px-1 py-1">
+                        <input type="number" min="0" max="100" 
+                          class="w-full px-2 py-1 text-center text-xs border border-gray-200 rounded focus:border-blue-400 focus:outline-none grade-input" 
+                          data-student="${student.id}" data-type="SAS"
+                          value="${grades.SAS || ''}"
+                          onchange="updateGrade('${subjectId}', '${student.id}', 'SAS', this.value)">
+                      </td>
+                      <td class="border border-gray-300 px-2 py-1 text-center font-bold bg-gray-50 text-xs" id="avg-${student.id}">
+                        ${calculateStudentAverage(grades)}
+                      </td>
+                    </tr>
+                  `;
+                }).join('')}
+              </tbody>
+            </table>
+          </div>
+          <div class="mt-4 flex justify-end">
+            <button onclick="this.closest('.modal-overlay').remove(); showToast('Nilai berhasil disimpan!')" class="px-4 py-2 rounded-lg text-white" style="background: ${config.primary_color}">Selesai</button>
+          </div>
+        </div>
+      `;
+      document.body.appendChild(modal);
+    }
+
+    async function updateGrade(subjectId, studentId, gradeType, value) {
+      let subjectGrades = appData.grades.find(g => g.subjectId === subjectId);
+      if (!subjectGrades) {
+        subjectGrades = { subjectId, studentGrades: {} };
+        appData.grades.push(subjectGrades);
+      }
+      if (!subjectGrades.studentGrades[studentId]) {
+        subjectGrades.studentGrades[studentId] = {};
+      }
+      subjectGrades.studentGrades[studentId][gradeType] = value ? parseInt(value) : null;
+      
+      // Update LM average if it's a TP grade
+      if (gradeType.includes('_TP')) {
+        const lm = gradeType.split('_')[0]; // Extract LM1, LM2, etc.
+        const lmValues = Array.from({length: 5}, (_, i) => subjectGrades.studentGrades[studentId][`${lm}_TP${i+1}`])
+          .filter(v => v !== null && v !== undefined && !isNaN(v));
+        const lmAvg = lmValues.length > 0 ? Math.round(lmValues.reduce((a, b) => a + b, 0) / lmValues.length) : '-';
+        const lmAvgEl = document.getElementById(`avg-${lm}-${studentId}`);
+        if (lmAvgEl) {
+          lmAvgEl.textContent = lmAvg;
+        }
+      }
+      
+      // Update average display
+      const avgEl = document.getElementById(`avg-${studentId}`);
+      if (avgEl) {
+        avgEl.textContent = calculateStudentAverage(subjectGrades.studentGrades[studentId]);
+      }
+      
+      // Update student's overall average
+      updateStudentOverallAverage(studentId);
+      
+      await saveAppData();
+    }
+
+    function calculateStudentAverage(grades) {
+      if (!grades) return '-';
+      const values = Object.values(grades).filter(v => v !== null && v !== undefined && !isNaN(v));
+      if (values.length === 0) return '-';
+      return Math.round(values.reduce((a, b) => a + b, 0) / values.length);
+    }
+
+    function updateStudentOverallAverage(studentId) {
+      const studentIdx = appData.students.findIndex(s => s.id === studentId);
+      if (studentIdx === -1) return;
+      
+      let totalGrades = [];
+      appData.grades.forEach(subjectGrade => {
+        const studentGrades = subjectGrade.studentGrades[studentId];
+        if (studentGrades) {
+          const values = Object.values(studentGrades).filter(v => v !== null && v !== undefined && !isNaN(v));
+          totalGrades = totalGrades.concat(values);
+        }
+      });
+      
+      if (totalGrades.length > 0) {
+        appData.students[studentIdx].avgGrade = Math.round(totalGrades.reduce((a, b) => a + b, 0) / totalGrades.length);
+      }
+    }
+
+    // ===================== DAILY JOURNAL =====================
+    function renderJournal() {
+      const myJournals = appData.journals.filter(j => j.teacher === currentUser.username);
+      const mySubjects = appData.subjects.filter(s => s.kelas === currentUser.kelas);
+      const myStudents = appData.students.filter(s => s.kelas === currentUser.kelas);
+      
+      return `
+        <div class="space-y-6">
+          <div class="flex items-center justify-between">
+            <h1 class="text-2xl font-bold" style="color: ${config.text_color}">Jurnal Harian</h1>
+            <button onclick="showAddJournalModal()" class="px-4 py-2 rounded-lg text-white flex items-center gap-2 transition hover:opacity-90" style="background: ${config.secondary_color}">
+              <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"/></svg>
+              Tambah Jurnal
+            </button>
+          </div>
+
+          <!-- Journal List -->
+          <div class="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
+            <div class="overflow-x-auto">
+              <table class="w-full">
+                <thead class="bg-gray-50">
+                  <tr>
+                    <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Tanggal</th>
+                    <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Mata Pelajaran</th>
+                    <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Materi</th>
+                    <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Sub Bab</th>
+                    <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Tidak Hadir</th>
+                    <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Kejadian Khusus</th>
+                    <th class="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase">Aksi</th>
+                  </tr>
+                </thead>
+                <tbody class="divide-y divide-gray-100">
+                  ${myJournals.length > 0 ? myJournals.map(j => `
+                    <tr class="hover:bg-gray-50">
+                      <td class="px-4 py-3 text-sm">${j.tanggal}</td>
+                      <td class="px-4 py-3 text-sm font-medium" style="color: ${config.text_color}">${j.mapel}</td>
+                      <td class="px-4 py-3 text-sm">${j.materi || '-'}</td>
+                      <td class="px-4 py-3 text-sm">${j.subBab || '-'}</td>
+                      <td class="px-4 py-3 text-sm">${j.tidakHadir || '-'}</td>
+                      <td class="px-4 py-3 text-sm max-w-xs">
+                        ${j.kejadianKhusus && j.kejadianKhusus.length > 0 ? 
+                          j.kejadianKhusus.map(k => `<span class="inline-block px-2 py-0.5 text-xs rounded-full bg-amber-100 text-amber-700 mr-1 mb-1">${k.siswa}: ${k.kejadian}</span>`).join('') : '-'}
+                      </td>
+                      <td class="px-4 py-3 text-center">
+                        <div class="flex items-center justify-center gap-2">
+                          <button onclick="showEditJournalModal('${j.id}')" class="p-1.5 rounded-lg hover:bg-gray-100 text-blue-500"><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/></svg></button>
+                          <button onclick="deleteJournal('${j.id}')" class="p-1.5 rounded-lg hover:bg-gray-100 text-red-500"><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg></button>
+                        </div>
+                      </td>
+                    </tr>
+                  `).join('') : `
+                    <tr>
+                      <td colspan="7" class="px-4 py-8 text-center text-gray-500">Belum ada jurnal harian. Klik "Tambah Jurnal" untuk menambahkan.</td>
+                    </tr>
+                  `}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      `;
+    }
+
+    function showAddJournalModal() {
+      const mySubjects = appData.subjects.filter(s => s.kelas === currentUser.kelas);
+      const myStudents = appData.students.filter(s => s.kelas === currentUser.kelas);
+      
+      const modal = document.createElement('div');
+      modal.className = 'fixed inset-0 modal-overlay flex items-center justify-center z-50';
+      modal.innerHTML = `
+        <div class="bg-white rounded-xl p-6 max-w-2xl w-full mx-4 shadow-2xl max-h-[90%] overflow-y-auto">
+          <h3 class="text-xl font-semibold mb-4" style="color: ${config.primary_color}">Tambah Jurnal Harian</h3>
+          <div class="space-y-4">
+            <div>
+              <label class="block text-sm text-gray-600 mb-1">Tanggal</label>
+              <input type="date" id="journal-tanggal" class="w-full px-3 py-2 border rounded-lg" value="${new Date().toISOString().split('T')[0]}">
+            </div>
+            <div>
+              <label class="block text-sm text-gray-600 mb-1">Mata Pelajaran</label>
+              <select id="journal-mapel" class="w-full px-3 py-2 border rounded-lg" onchange="updateMateriOptions()">
+                <option value="">-- Pilih Mapel --</option>
+                ${mySubjects.map(s => `<option value="${s.id}" data-nama="${s.nama}">${s.nama}</option>`).join('')}
+              </select>
+            </div>
+            <div>
+              <label class="block text-sm text-gray-600 mb-1">Materi</label>
+              <select id="journal-materi" class="w-full px-3 py-2 border rounded-lg">
+                <option value="">-- Pilih Materi --</option>
+              </select>
+            </div>
+            <div>
+              <label class="block text-sm text-gray-600 mb-1">Sub Bab Materi</label>
+              <input type="text" id="journal-subbab" class="w-full px-3 py-2 border rounded-lg" placeholder="Sub bab yang diajarkan">
+            </div>
+            
+            <!-- Presensi Section -->
+            <div class="border-t pt-4">
+              <h4 class="font-medium mb-3" style="color: ${config.primary_color}">Presensi Siswa</h4>
+              <div class="max-h-60 overflow-y-auto border rounded-lg p-3 bg-gray-50">
+                <div class="grid grid-cols-1 gap-2">
+                  ${myStudents.map(s => {
+                    // Get attendance from data presensi for the selected date
+                    const tanggalInput = document.getElementById('journal-tanggal');
+                    let defaultStatus = 'H';
+                    if (tanggalInput && tanggalInput.value) {
+                      const date = new Date(tanggalInput.value);
+                      const monthKey = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
+                      const day = date.getDate();
+                      const attendance = s.attendance || {};
+                      const monthAttendance = attendance[monthKey] || {};
+                      defaultStatus = monthAttendance[day] || 'H';
+                    }
+                    
+                    return `
+                    <div class="flex items-center justify-between bg-white p-2 rounded">
+                      <span class="text-sm font-medium">${s.nama}</span>
+                      <select id="presence-${s.id}" class="px-2 py-1 border rounded text-sm">
+                        <option value="H" ${defaultStatus === 'H' ? 'selected' : ''}>Hadir</option>
+                        <option value="I" ${defaultStatus === 'I' ? 'selected' : ''}>Izin</option>
+                        <option value="S" ${defaultStatus === 'S' ? 'selected' : ''}>Sakit</option>
+                        <option value="A" ${defaultStatus === 'A' ? 'selected' : ''}>Alpha</option>
+                      </select>
+                    </div>
+                  `}).join('')}
+                </div>
+              </div>
+              <p class="text-xs text-gray-500 mt-2">* Data presensi ditarik dari fitur Presensi berdasarkan tanggal jurnal</p>
+            </div>
+            
+            <div>
+              <label class="block text-sm text-gray-600 mb-1">Kejadian Khusus Siswa (Catatan untuk Rapor)</label>
+              <div id="kejadian-list" class="space-y-2 mb-2"></div>
+              <button type="button" onclick="addKejadianInput()" class="text-sm px-3 py-1.5 rounded-lg border border-dashed border-gray-300 hover:border-gray-400 transition flex items-center gap-1">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"/></svg>
+                Tambah Kejadian Khusus
+              </button>
+            </div>
+          </div>
+          <div class="flex gap-3 justify-end mt-6">
+            <button class="cancel-btn px-4 py-2 rounded-lg border border-gray-300 hover:bg-gray-50 transition">Batal</button>
+            <button class="save-btn px-4 py-2 rounded-lg text-white transition" style="background: ${config.primary_color}">Simpan</button>
+          </div>
+        </div>
+      `;
+      document.body.appendChild(modal);
+      
+      modal.querySelector('.cancel-btn').onclick = () => modal.remove();
+      modal.querySelector('.save-btn').onclick = async () => {
+        const tanggal = document.getElementById('journal-tanggal').value;
+        const mapelSelect = document.getElementById('journal-mapel');
+        const mapel = mapelSelect.options[mapelSelect.selectedIndex]?.dataset.nama || '';
+        const materi = document.getElementById('journal-materi').value;
+        const subBab = document.getElementById('journal-subbab').value;
+        
+        // Get presence data
+        const presenceData = {};
+        const tidakHadirList = [];
+        myStudents.forEach(s => {
+          const presenceSelect = document.getElementById(`presence-${s.id}`);
+          if (presenceSelect) {
+            const status = presenceSelect.value;
+            presenceData[s.id] = status;
+            if (status !== 'H') {
+              tidakHadirList.push(`${s.nama} (${status})`);
+            }
+          }
+        });
+        
+        // Save to attendance
+        if (tanggal) {
+          const date = new Date(tanggal);
+          const monthKey = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
+          const day = date.getDate();
+          
+          myStudents.forEach(s => {
+            const studentIdx = appData.students.findIndex(st => st.id === s.id);
+            if (studentIdx !== -1) {
+              if (!appData.students[studentIdx].attendance) {
+                appData.students[studentIdx].attendance = {};
+              }
+              if (!appData.students[studentIdx].attendance[monthKey]) {
+                appData.students[studentIdx].attendance[monthKey] = {};
+              }
+              appData.students[studentIdx].attendance[monthKey][day] = presenceData[s.id] || 'H';
+            }
+          });
+        }
+        
+        const kejadianInputs = document.querySelectorAll('.kejadian-row');
+        const kejadianKhusus = Array.from(kejadianInputs).map(row => ({
+          siswa: row.querySelector('.kejadian-siswa').value,
+          kejadian: row.querySelector('.kejadian-text').value
+        })).filter(k => k.siswa && k.kejadian);
+        
+        if (!tanggal || !mapel) {
+          showToast('Mohon lengkapi tanggal dan mata pelajaran!', 'error');
+          return;
+        }
+        
+        const newJournal = {
+          id: Date.now().toString(),
+          tanggal,
+          mapel,
+          materi,
+          subBab,
+          tidakHadir: tidakHadirList.join(', '),
+          kejadianKhusus,
+          presenceData,
+          teacher: currentUser.username,
+          kelas: currentUser.kelas
+        };
+        
+        appData.journals.push(newJournal);
+        await saveAppData();
+        modal.remove();
+        navigateTo('journal');
+        showToast('Jurnal berhasil ditambahkan!');
+      };
+      modal.onclick = (e) => { if(e.target === modal) modal.remove(); };
+    }
+
+    function updateMateriOptions() {
+      const mapelSelect = document.getElementById('journal-mapel');
+      const materiSelect = document.getElementById('journal-materi');
+      const subjectId = mapelSelect.value;
+      
+      const subject = appData.subjects.find(s => s.id === subjectId);
+      materiSelect.innerHTML = '<option value="">-- Pilih Materi --</option>';
+      
+      if (subject && subject.materi) {
+        subject.materi.forEach(m => {
+          materiSelect.innerHTML += `<option value="${m}">${m}</option>`;
+        });
+      }
+    }
+
+    function addKejadianInput() {
+      const myStudents = appData.students.filter(s => s.kelas === currentUser.kelas);
+      const list = document.getElementById('kejadian-list');
+      const div = document.createElement('div');
+      div.className = 'kejadian-row flex gap-2';
+      div.innerHTML = `
+        <select class="kejadian-siswa flex-1 px-3 py-2 border rounded-lg text-sm">
+          <option value="">-- Pilih Siswa --</option>
+          ${myStudents.map(s => `<option value="${s.nama}">${s.nama}</option>`).join('')}
+        </select>
+        <input type="text" class="kejadian-text flex-1 px-3 py-2 border rounded-lg text-sm" placeholder="Kejadian">
+        <button type="button" onclick="this.parentElement.remove()" class="p-2 text-red-500 hover:bg-red-50 rounded-lg">
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+        </button>
+      `;
+      list.appendChild(div);
+    }
+
+    function showEditJournalModal(journalId) {
+      const journal = appData.journals.find(j => j.id === journalId);
+      if (!journal) return;
+      
+      const mySubjects = appData.subjects.filter(s => s.kelas === currentUser.kelas);
+      const myStudents = appData.students.filter(s => s.kelas === currentUser.kelas);
+      const selectedSubject = mySubjects.find(s => s.nama === journal.mapel);
+      
+      const modal = document.createElement('div');
+      modal.className = 'fixed inset-0 modal-overlay flex items-center justify-center z-50';
+      modal.innerHTML = `
+        <div class="bg-white rounded-xl p-6 max-w-2xl w-full mx-4 shadow-2xl max-h-[90%] overflow-y-auto">
+          <h3 class="text-xl font-semibold mb-4" style="color: ${config.primary_color}">Edit Jurnal Harian</h3>
+          <div class="space-y-4">
+            <div>
+              <label class="block text-sm text-gray-600 mb-1">Tanggal</label>
+              <input type="date" id="edit-journal-tanggal" class="w-full px-3 py-2 border rounded-lg" value="${journal.tanggal}">
+            </div>
+            <div>
+              <label class="block text-sm text-gray-600 mb-1">Mata Pelajaran</label>
+              <select id="edit-journal-mapel" class="w-full px-3 py-2 border rounded-lg" onchange="updateEditMateriOptions()">
+                <option value="">-- Pilih Mapel --</option>
+                ${mySubjects.map(s => `<option value="${s.id}" data-nama="${s.nama}" ${s.nama === journal.mapel ? 'selected' : ''}>${s.nama}</option>`).join('')}
+              </select>
+            </div>
+            <div>
+              <label class="block text-sm text-gray-600 mb-1">Materi</label>
+              <select id="edit-journal-materi" class="w-full px-3 py-2 border rounded-lg">
+                <option value="">-- Pilih Materi --</option>
+                ${selectedSubject && selectedSubject.materi ? selectedSubject.materi.map(m => `<option value="${m}" ${m === journal.materi ? 'selected' : ''}>${m}</option>`).join('') : ''}
+              </select>
+            </div>
+            <div>
+              <label class="block text-sm text-gray-600 mb-1">Sub Bab Materi</label>
+              <input type="text" id="edit-journal-subbab" class="w-full px-3 py-2 border rounded-lg" value="${journal.subBab || ''}">
+            </div>
+            
+            <!-- Presensi Section -->
+            <div class="border-t pt-4">
+              <h4 class="font-medium mb-3" style="color: ${config.primary_color}">Presensi Siswa</h4>
+              <div class="max-h-60 overflow-y-auto border rounded-lg p-3 bg-gray-50">
+                <div class="grid grid-cols-1 gap-2">
+                  ${myStudents.map(s => {
+                    const currentPresence = journal.presenceData ? journal.presenceData[s.id] : 'H';
+                    return `
+                    <div class="flex items-center justify-between bg-white p-2 rounded">
+                      <span class="text-sm font-medium">${s.nama}</span>
+                      <select id="edit-presence-${s.id}" class="px-2 py-1 border rounded text-sm">
+                        <option value="H" ${currentPresence === 'H' ? 'selected' : ''}>Hadir</option>
+                        <option value="I" ${currentPresence === 'I' ? 'selected' : ''}>Izin</option>
+                        <option value="S" ${currentPresence === 'S' ? 'selected' : ''}>Sakit</option>
+                        <option value="A" ${currentPresence === 'A' ? 'selected' : ''}>Alpha</option>
+                      </select>
+                    </div>
+                  `}).join('')}
+                </div>
+              </div>
+            </div>
+            
+            <div>
+              <label class="block text-sm text-gray-600 mb-1">Kejadian Khusus Siswa (Catatan untuk Rapor)</label>
+              <div id="edit-kejadian-list" class="space-y-2 mb-2">
+                ${(journal.kejadianKhusus || []).map(k => `
+                  <div class="edit-kejadian-row flex gap-2">
+                    <select class="edit-kejadian-siswa flex-1 px-3 py-2 border rounded-lg text-sm">
+                      <option value="">-- Pilih Siswa --</option>
+                      ${myStudents.map(s => `<option value="${s.nama}" ${s.nama === k.siswa ? 'selected' : ''}>${s.nama}</option>`).join('')}
+                    </select>
+                    <input type="text" class="edit-kejadian-text flex-1 px-3 py-2 border rounded-lg text-sm" value="${k.kejadian}">
+                    <button type="button" onclick="this.parentElement.remove()" class="p-2 text-red-500 hover:bg-red-50 rounded-lg">
+                      <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+                    </button>
+                  </div>
+                `).join('')}
+              </div>
+              <button type="button" onclick="addEditKejadianInput()" class="text-sm px-3 py-1.5 rounded-lg border border-dashed border-gray-300 hover:border-gray-400 transition flex items-center gap-1">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"/></svg>
+                Tambah Kejadian Khusus
+              </button>
+            </div>
+          </div>
+          <div class="flex gap-3 justify-end mt-6">
+            <button class="cancel-btn px-4 py-2 rounded-lg border border-gray-300 hover:bg-gray-50 transition">Batal</button>
+            <button class="save-btn px-4 py-2 rounded-lg text-white transition" style="background: ${config.primary_color}">Simpan</button>
+          </div>
+        </div>
+      `;
+      document.body.appendChild(modal);
+      
+      modal.querySelector('.cancel-btn').onclick = () => modal.remove();
+      modal.querySelector('.save-btn').onclick = async () => {
+        const journalIdx = appData.journals.findIndex(j => j.id === journalId);
+        if (journalIdx !== -1) {
+          const mapelSelect = document.getElementById('edit-journal-mapel');
+          const tanggal = document.getElementById('edit-journal-tanggal').value;
+          
+          // Get presence data
+          const presenceData = {};
+          const tidakHadirList = [];
+          myStudents.forEach(s => {
+            const presenceSelect = document.getElementById(`edit-presence-${s.id}`);
+            if (presenceSelect) {
+              const status = presenceSelect.value;
+              presenceData[s.id] = status;
+              if (status !== 'H') {
+                tidakHadirList.push(`${s.nama} (${status})`);
+              }
+            }
+          });
+          
+          // Save to attendance
+          if (tanggal) {
+            const date = new Date(tanggal);
+            const monthKey = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
+            const day = date.getDate();
+            
+            myStudents.forEach(s => {
+              const studentIdx = appData.students.findIndex(st => st.id === s.id);
+              if (studentIdx !== -1) {
+                if (!appData.students[studentIdx].attendance) {
+                  appData.students[studentIdx].attendance = {};
+                }
+                if (!appData.students[studentIdx].attendance[monthKey]) {
+                  appData.students[studentIdx].attendance[monthKey] = {};
+                }
+                appData.students[studentIdx].attendance[monthKey][day] = presenceData[s.id] || 'H';
+              }
+            });
+          }
+          
+          const kejadianInputs = document.querySelectorAll('.edit-kejadian-row');
+          
+          appData.journals[journalIdx].tanggal = tanggal;
+          appData.journals[journalIdx].mapel = mapelSelect.options[mapelSelect.selectedIndex]?.dataset.nama || '';
+          appData.journals[journalIdx].materi = document.getElementById('edit-journal-materi').value;
+          appData.journals[journalIdx].subBab = document.getElementById('edit-journal-subbab').value;
+          appData.journals[journalIdx].tidakHadir = tidakHadirList.join(', ');
+          appData.journals[journalIdx].presenceData = presenceData;
+          appData.journals[journalIdx].kejadianKhusus = Array.from(kejadianInputs).map(row => ({
+            siswa: row.querySelector('.edit-kejadian-siswa').value,
+            kejadian: row.querySelector('.edit-kejadian-text').value
+          })).filter(k => k.siswa && k.kejadian);
+          
+          await saveAppData();
+          modal.remove();
+          navigateTo('journal');
+          showToast('Jurnal berhasil diperbarui!');
+        }
+      };
+      modal.onclick = (e) => { if(e.target === modal) modal.remove(); };
+    }
+
+    function updateEditMateriOptions() {
+      const mapelSelect = document.getElementById('edit-journal-mapel');
+      const materiSelect = document.getElementById('edit-journal-materi');
+      const subjectId = mapelSelect.value;
+      
+      const subject = appData.subjects.find(s => s.id === subjectId);
+      materiSelect.innerHTML = '<option value="">-- Pilih Materi --</option>';
+      
+      if (subject && subject.materi) {
+        subject.materi.forEach(m => {
+          materiSelect.innerHTML += `<option value="${m}">${m}</option>`;
+        });
+      }
+    }
+
+    function addEditKejadianInput() {
+      const myStudents = appData.students.filter(s => s.kelas === currentUser.kelas);
+      const list = document.getElementById('edit-kejadian-list');
+      const div = document.createElement('div');
+      div.className = 'edit-kejadian-row flex gap-2';
+      div.innerHTML = `
+        <select class="edit-kejadian-siswa flex-1 px-3 py-2 border rounded-lg text-sm">
+          <option value="">-- Pilih Siswa --</option>
+          ${myStudents.map(s => `<option value="${s.nama}">${s.nama}</option>`).join('')}
+        </select>
+        <input type="text" class="edit-kejadian-text flex-1 px-3 py-2 border rounded-lg text-sm" placeholder="Kejadian">
+        <button type="button" onclick="this.parentElement.remove()" class="p-2 text-red-500 hover:bg-red-50 rounded-lg">
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+        </button>
+      `;
+      list.appendChild(div);
+    }
+
+    async function deleteJournal(journalId) {
+      showModal('Hapus Jurnal', 'Apakah Anda yakin ingin menghapus jurnal ini?', async () => {
+        appData.journals = appData.journals.filter(j => j.id !== journalId);
+        await saveAppData();
+        navigateTo('journal');
+        showToast('Jurnal berhasil dihapus!');
+      });
+    }
+
+    // ===================== REPORT CARD =====================
+    function renderReport() {
+      const myStudents = appData.students.filter(s => s.kelas === currentUser.kelas);
+      
+      return `
+        <div class="space-y-6">
+          <div class="flex items-center justify-between">
+            <h1 class="text-2xl font-bold" style="color: ${config.text_color}">Cetak Rapor</h1>
+          </div>
+
+          <div class="bg-white rounded-xl shadow-sm p-6 border border-gray-100">
+            <h3 class="font-semibold mb-4" style="color: ${config.text_color}">Pilih Siswa</h3>
+            <div class="grid md:grid-cols-2 lg:grid-cols-3 gap-3">
+              ${myStudents.length > 0 ? myStudents.map(s => `
+                <button onclick="generateReport('${s.id}')" class="p-4 rounded-lg border border-gray-200 hover:border-blue-300 hover:bg-blue-50 transition text-left flex items-center gap-3">
+                  <div class="w-10 h-10 rounded-full bg-gray-200 overflow-hidden flex-shrink-0">
+                    ${s.foto ? `<img src="${s.foto}" class="w-full h-full object-cover" loading="lazy" onerror="this.src=''; this.parentElement.innerHTML='<span class=\\'flex items-center justify-center h-full text-gray-500 font-medium\\'>${s.nama.charAt(0)}</span>';">` : 
+                    `<span class="flex items-center justify-center h-full text-gray-500 font-medium">${s.nama.charAt(0)}</span>`}
+                  </div>
+                  <div>
+                    <p class="font-medium text-sm" style="color: ${config.text_color}">${s.nama}</p>
+                    <p class="text-xs text-gray-500">NIS: ${s.nis}</p>
+                  </div>
+                </button>
+              `).join('') : `
+                <div class="col-span-full text-center py-8 text-gray-500">
+                  Belum ada data siswa. Silakan tambahkan siswa terlebih dahulu.
+                </div>
+              `}
+            </div>
+          </div>
+        </div>
+      `;
+    }
+
+    function generateReport(studentId) {
+      const student = appData.students.find(s => s.id === studentId);
+      if (!student) return;
+      
+      const mySubjects = appData.subjects.filter(s => s.kelas === currentUser.kelas);
+      const myJournals = appData.journals.filter(j => j.teacher === currentUser.username);
+      const studentJournals = myJournals.filter(j => 
+        j.kejadianKhusus && j.kejadianKhusus.some(k => k.siswa === student.nama)
+      );
+      
+      // Calculate grades for each subject
+      const subjectGrades = mySubjects.map(subj => {
+        const gradeData = appData.grades.find(g => g.subjectId === subj.id);
+        const studentGrades = gradeData?.studentGrades[studentId] || {};
+        const avg = calculateStudentAverage(studentGrades);
+        return {
+          nama: subj.nama,
+          nilai: avg === '-' ? 0 : avg
+        };
+      });
+      
+      const modal = document.createElement('div');
+      modal.className = 'fixed inset-0 modal-overlay flex items-center justify-center z-50';
+      modal.innerHTML = `
+        <div class="bg-white rounded-xl shadow-2xl max-w-4xl w-full mx-4 max-h-[95%] overflow-hidden flex flex-col">
+          <div class="p-4 border-b flex items-center justify-between no-print">
+            <h3 class="font-semibold" style="color: ${config.primary_color}">Preview Rapor - ${student.nama}</h3>
+            <div class="flex gap-2">
+              <button onclick="downloadReportPDF('${studentId}')" class="px-4 py-2 rounded-lg text-white flex items-center gap-2" style="background: ${config.accent_color}">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/></svg>
+                Download PDF
+              </button>
+              <button onclick="this.closest('.modal-overlay').remove()" class="p-2 hover:bg-gray-100 rounded-lg">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+              </button>
+            </div>
+          </div>
+          <div class="flex-1 overflow-auto p-6" id="report-content">
+            <div class="bg-white" style="width: 210mm; min-height: 297mm; padding: 15mm 20mm; margin: 0 auto; font-size: 11pt; line-height: 1.4;">
+              <!-- Header -->
+              <div class="text-center border-b-2 border-black pb-3 mb-4">
+                <table style="width: 100%; border: none;">
+                  <tr>
+                    <td style="width: 110px; vertical-align: top; border: none;">
+                      ${appData.schoolProfile.logo ? `<img src="${appData.schoolProfile.logo}" style="width: 90px; height: 90px; object-fit: contain; display: block;" loading="lazy">` : '<div style="width: 90px; height: 90px;"></div>'}
+                    </td>
+                    <td style="vertical-align: top; text-align: center; border: none;">
+                      <p class="font-medium mb-1" style="font-size: 13pt;">${appData.schoolProfile.namaLembaga}</p>
+                      <h1 class="font-bold mb-2" style="font-size: 18pt;">${appData.schoolProfile.namaSekolah}</h1>
+                      <p class="leading-snug" style="font-size: 11pt;">${appData.schoolProfile.alamat}, ${appData.schoolProfile.kelurahan}, ${appData.schoolProfile.kecamatan}</p>
+                      <p class="leading-snug" style="font-size: 11pt;">${appData.schoolProfile.kabupaten}, ${appData.schoolProfile.provinsi} ${appData.schoolProfile.kodePos}</p>
+                      <p class="mt-1" style="font-size: 10pt;">Telp: ${appData.schoolProfile.telepon} | Email: ${appData.schoolProfile.email}</p>
+                    </td>
+                  </tr>
+                </table>
+              </div>
+
+              <h2 class="text-center text-base font-bold mb-2">LAPORAN HASIL BELAJAR PESERTA DIDIK</h2>
+              <p class="text-center text-sm mb-4">Semester ${appData.schoolProfile.semester} Tahun Pelajaran ${appData.schoolProfile.tahunAjaran}</p>
+
+              <!-- Student Info -->
+              <div class="grid grid-cols-2 gap-3 mb-4 text-xs">
+                <div>
+                  <table class="w-full">
+                    <tr><td class="w-28">Nama Siswa</td><td>: ${student.nama}</td></tr>
+                    <tr><td>NIS</td><td>: ${student.nis}</td></tr>
+                    <tr><td>Jenis Kelamin</td><td>: ${student.gender === 'L' ? 'Laki-laki' : 'Perempuan'}</td></tr>
+                  </table>
+                </div>
+                <div>
+                  <table class="w-full">
+                    <tr><td class="w-28">Kelas</td><td>: ${student.kelas}</td></tr>
+                    <tr><td>Semester</td><td>: ${appData.schoolProfile.semester}</td></tr>
+                    <tr><td>Tahun Pelajaran</td><td>: ${appData.schoolProfile.tahunAjaran}</td></tr>
+                  </table>
+                </div>
+              </div>
+
+              <!-- Grades Table -->
+              <h3 class="font-bold mb-2 text-sm">A. REKAP NILAI</h3>
+              <table class="w-full border-collapse border border-black mb-4 text-xs">
+                <thead>
+                  <tr class="bg-gray-100">
+                    <th class="border border-black px-2 py-1 text-center w-10">No</th>
+                    <th class="border border-black px-2 py-1 text-left">Mata Pelajaran</th>
+                    <th class="border border-black px-2 py-1 text-center w-20">Nilai</th>
+                    <th class="border border-black px-2 py-1 text-center w-32">Predikat</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  ${subjectGrades.map((sg, i) => `
+                    <tr>
+                      <td class="border border-black px-2 py-1 text-center">${i + 1}</td>
+                      <td class="border border-black px-2 py-1">${sg.nama}</td>
+                      <td class="border border-black px-2 py-1 text-center font-bold">${sg.nilai}</td>
+                      <td class="border border-black px-2 py-1 text-center">${getPredikat(sg.nilai)}</td>
+                    </tr>
+                  `).join('')}
+                  <tr class="bg-gray-100 font-bold">
+                    <td colspan="2" class="border border-black px-2 py-1 text-center">Rata-rata</td>
+                    <td class="border border-black px-2 py-1 text-center">${subjectGrades.length > 0 ? Math.round(subjectGrades.reduce((a,b) => a + b.nilai, 0) / subjectGrades.length) : 0}</td>
+                    <td class="border border-black px-2 py-1"></td>
+                  </tr>
+                </tbody>
+              </table>
+
+              <!-- Attendance -->
+              <h3 class="font-bold mb-2 text-sm">B. KEHADIRAN</h3>
+              <table class="w-full border-collapse border border-black mb-4 text-xs">
+                <tr>
+                  <td class="border border-black px-3 py-2 w-32 bg-gray-50 font-medium">Hadir</td>
+                  <td class="border border-black px-3 py-2 text-center font-bold">${countTotalStatus(student, 'H')} hari</td>
+                  <td class="border border-black px-3 py-2 w-32 bg-gray-50 font-medium">Izin</td>
+                  <td class="border border-black px-3 py-2 text-center font-bold">${countTotalStatus(student, 'I')} hari</td>
+                </tr>
+                <tr>
+                  <td class="border border-black px-3 py-2 bg-gray-50 font-medium">Sakit</td>
+                  <td class="border border-black px-3 py-2 text-center font-bold">${countTotalStatus(student, 'S')} hari</td>
+                  <td class="border border-black px-3 py-2 bg-gray-50 font-medium">Alpha</td>
+                  <td class="border border-black px-3 py-2 text-center font-bold">${countTotalStatus(student, 'A')} hari</td>
+                </tr>
+                <tr class="bg-blue-50">
+                  <td class="border border-black px-3 py-2 font-bold" colspan="3">Persentase Kehadiran</td>
+                  <td class="border border-black px-3 py-2 text-center font-bold text-lg">${student.attendanceRate || 0}%</td>
+                </tr>
+              </table>
+
+              <!-- Special Events -->
+              <h3 class="font-bold mb-2 text-sm">C. CATATAN KEJADIAN KHUSUS</h3>
+              <div class="border border-black p-2 min-h-16 text-xs mb-4">
+                ${studentJournals.length > 0 ? 
+                  studentJournals.map(j => {
+                    const event = j.kejadianKhusus.find(k => k.siswa === student.nama);
+                    return event ? `<p>• ${j.tanggal} (${j.mapel}): ${event.kejadian}</p>` : '';
+                  }).join('') : 
+                  '<p class="text-gray-500 italic">Tidak ada catatan kejadian khusus</p>'}
+              </div>
+
+              <!-- Signature -->
+              <div class="grid grid-cols-2 gap-6 mt-6 text-xs">
+                <div class="text-center">
+                  <p>Mengetahui,</p>
+                  <p>Orang Tua/Wali</p>
+                  <div class="h-16"></div>
+                  <p class="font-bold border-b border-black inline-block">(...........................)</p>
+                </div>
+                <div class="text-center">
+                  <p>${appData.schoolProfile.kabupaten}, ${new Date().toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' })}</p>
+                  <p>Wali Kelas</p>
+                  <div class="h-16"></div>
+                  <p class="font-bold border-b border-black inline-block">${currentUser.namaLengkap || currentUser.username}</p>
+                  ${currentUser.nip ? `<p class="text-xs mt-1">NIP. ${currentUser.nip}</p>` : ''}
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      `;
+      document.body.appendChild(modal);
+      modal.onclick = (e) => { if(e.target === modal) modal.remove(); };
+    }
+
+    function getPredikat(nilai) {
+      if (nilai >= 90) return 'Sangat Baik';
+      if (nilai >= 80) return 'Baik';
+      if (nilai >= 70) return 'Cukup';
+      if (nilai >= 60) return 'Kurang';
+      return 'Sangat Kurang';
+    }
+
+    function countTotalStatus(student, status) {
+      let totalCount = 0;
+      const attendance = student.attendance || {};
+      
+      Object.keys(attendance).forEach(monthKey => {
+        const monthAttendance = attendance[monthKey];
+        Object.values(monthAttendance).forEach(s => {
+          if (s === status) totalCount++;
+        });
+      });
+      
+      return totalCount;
+    }
+
+    function downloadReportPDF(studentId) {
+      const student = appData.students.find(s => s.id === studentId);
+      if (!student) return;
+      
+      const reportContent = document.getElementById('report-content');
+      if (!reportContent) return;
+      
+      // Create a new window for printing
+      const printWindow = window.open('', '_blank');
+      printWindow.document.write(`
+        <!DOCTYPE html>
+        <html>
+        <head>
+          <title>Rapor - ${student.nama}</title>
+          <style>
+            * { margin: 0; padding: 0; box-sizing: border-box; }
+            body { font-family: 'Times New Roman', serif; font-size: 11pt; line-height: 1.4; }
+            @page { size: A4; margin: 15mm; }
+            @media print { body { -webkit-print-color-adjust: exact; print-color-adjust: exact; } }
+            table { border-collapse: collapse; width: 100%; }
+            th, td { border: 1px solid black; padding: 4px 8px; }
+            .text-center { text-align: center; }
+            .text-left { text-align: left; }
+            .font-bold { font-weight: bold; }
+            .mb-1 { margin-bottom: 4px; }
+            .mb-2 { margin-bottom: 8px; }
+            .mb-4 { margin-bottom: 16px; }
+            .mb-6 { margin-bottom: 24px; }
+            .mt-1 { margin-top: 4px; }
+            .mt-8 { margin-top: 32px; }
+            .pb-3 { padding-bottom: 12px; }
+            .pb-4 { padding-bottom: 16px; }
+            .border-b-2 { border-bottom: 2px solid black; }
+            .bg-gray-100 { background-color: #f3f4f6; }
+            .grid { display: grid; }
+            .grid-cols-2 { grid-template-columns: repeat(2, 1fr); }
+            .gap-4 { gap: 16px; }
+            .gap-8 { gap: 32px; }
+            .h-20 { height: 80px; }
+            .min-h-20 { min-height: 80px; }
+            .p-2 { padding: 8px; }
+            .w-10 { width: 40px; }
+            .w-20 { width: 80px; }
+            .w-32 { width: 128px; }
+            .w-40 { width: 160px; }
+            .w-16 { width: 64px; }
+            .h-16 { height: 64px; }
+            .h-32 { height: 128px; }
+            .inline-block { display: inline-block; }
+            .border-b { border-bottom: 1px solid black; }
+            .italic { font-style: italic; }
+            .text-gray-500 { color: #6b7280; }
+            .text-xs { font-size: 9pt; }
+            .text-sm { font-size: 10pt; }
+            .text-lg { font-size: 14pt; }
+            .text-xl { font-size: 16pt; }
+            .leading-snug { line-height: 1.3; }
+          </style>
+        </head>
+        <body>
+          ${reportContent.innerHTML}
+        </body>
+        </html>
+      `);
+      printWindow.document.close();
+      setTimeout(() => {
+        printWindow.print();
+      }, 500);
+      
+      showToast('Rapor siap diunduh!');
+    }
+
+    // ===================== INITIALIZATION =====================
+    async function init() {
+      if (window.dataSdk) {
+        await window.dataSdk.init(dataHandler);
+      }
+      await initElementSdk();
+      renderApp();
+    }
+
+    init();
+  </script>
+ <script>(function(){function c(){var b=a.contentDocument||a.contentWindow.document;if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'9c03b740c7a60b95',t:'MTc2ODc5ODI3NS4wMDAwMDA='};var a=document.createElement('script');a.nonce='';a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
+</html>
